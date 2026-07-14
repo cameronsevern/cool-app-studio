@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "config": {
+    "width": 1600,
+    "height": 1600,
+    "device": "pixel",
+    "shell": "cyan",
+    "background": "midnight",
+    "preset": "hero-right",
+    "accent": "#6ee7f5",
+    "showDevice": true,
+    "headlineSize": 108,
+    "subheadSize": 38,
+    "copyWidth": 0.7,
+    "copyTop": 0.075,
+    "copyLeft": 0.065,
+    "kicker": "PRODUCT STORY",
+    "headline": "Design, in perspective.",
+    "subhead": "Local, adjustable, export-ready."
+  }
+}

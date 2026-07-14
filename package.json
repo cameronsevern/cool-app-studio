@@ -1,0 +1,22 @@
+{
+  "name": "local-mockup-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A local, parametric device mockup editor and deterministic PNG renderer.",
+  "type": "module",
+  "bin": {
+    "mockup-studio": "src/cli.mjs"
+  },
+  "scripts": {
+    "start": "node src/cli.mjs serve --open",
+    "serve": "node src/cli.mjs serve",
+    "render": "node src/cli.mjs render",
+    "test": "node test/smoke.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.61.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mockup Studio Render</title>
+    <link rel="stylesheet" href="/scene.css">
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="export-frame" id="exportFrame">
+      <div class="scene-glow"></div>
+      <div class="scene-ring"></div>
+      <div class="scene-spectrum"></div>
+      <section class="copy-block">
+        <p class="copy-kicker"></p>
+        <h1 class="copy-headline"></h1>
+        <p class="copy-subhead"></p>
+      </section>
+      <section class="device-stage">
+        <div class="device-shadow"></div>
+        <div class="phone-rig">
+          <div class="phone-plane phone-back"></div>
+          <div class="phone-side phone-side-left"></div>
+          <div class="phone-side phone-side-right"></div>
+          <div class="phone-side phone-side-top"></div>
+          <div class="phone-side phone-side-bottom"></div>
+          <div class="phone-plane phone-front">
+            <div class="phone-screen"><img alt="App screenshot"></div>
+            <div class="phone-glass"></div>
+            <div class="phone-island"></div>
+            <div class="phone-button phone-button-power"></div>
+            <div class="phone-button phone-button-volume-up"></div>
+            <div class="phone-button phone-button-volume-down"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script src="/scene.js"></script>
+    <script>
+      (async () => {
+        const job = new URLSearchParams(window.location.search).get('job');
+        try {
+          const response = await fetch(`/api/job/${encodeURIComponent(job)}`);
+          if (!response.ok) throw new Error(`Render job failed: ${response.status}`);
+          const payload = await response.json();
+          const image = new Image();
+          image.decoding = 'sync';
+          image.src = payload.imageDataUrl;
+          await image.decode();
+          MockupScene.applyScene(
+            document.getElementById('exportFrame'),
+            payload.config,
+            payload.imageDataUrl,
+          );
+          await document.fonts.ready;
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          window.renderReady = true;
+        } catch (error) {
+          window.renderError = error.message;
+          document.body.dataset.renderError = error.message;
+        }
+      })();
+    </script>
+  </body>
+</html>

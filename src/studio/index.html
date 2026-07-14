@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mockup Studio</title>
+    <link rel="stylesheet" href="/scene.css">
+    <link rel="stylesheet" href="/studio.css">
+  </head>
+  <body>
+    <header class="studio-header">
+      <div class="brand">
+        <div class="brand-mark">M</div>
+        <div>
+          <h1>Mockup Studio</h1>
+          <p>Parametric device renderer</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="local-pill">Local · nothing uploaded</span>
+        <button class="secondary-button" id="loadPresetButton">Load preset</button>
+        <button class="secondary-button" id="savePresetButton">Save preset</button>
+        <button class="export-button" id="exportButton">Export PNG</button>
+        <input id="presetInput" type="file" accept="application/json,.json" hidden>
+      </div>
+    </header>
+
+    <main class="studio-layout">
+      <aside class="controls" aria-label="Mockup controls">
+        <section class="control-section">
+          <span class="section-label">Screenshot</span>
+          <div class="source-row">
+            <button class="source-button" id="sourceButton">Choose screenshot</button>
+            <span class="source-name" id="sourceName">Demo screenshot</span>
+          </div>
+          <input id="sourceInput" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+        </section>
+
+        <section class="control-section">
+          <label class="section-label" for="deviceSelect">Device</label>
+          <select id="deviceSelect">
+            <option value="iphone">iPhone · Dynamic Island</option>
+            <option value="pixel">Pixel · hole punch</option>
+          </select>
+          <label class="toggle-row" for="showDeviceInput">
+            <input id="showDeviceInput" type="checkbox" checked>
+            <span>Show 3D device</span>
+          </label>
+        </section>
+
+        <section class="control-section">
+          <span class="section-label">Camera preset</span>
+          <div class="preset-grid" id="presetGrid">
+            <button class="preset-button is-active" data-preset="hero-right">Hero right</button>
+            <button class="preset-button" data-preset="hero-left">Hero left</button>
+            <button class="preset-button" data-preset="floating">Floating</button>
+            <button class="preset-button" data-preset="low-angle">Low angle</button>
+            <button class="preset-button" data-preset="upright">Upright</button>
+          </div>
+        </section>
+
+        <section class="control-section">
+          <span class="section-label">Chassis</span>
+          <div class="material-grid" id="materialGrid">
+            <button class="material-button is-active" data-shell="graphite" aria-label="Graphite"><span style="background:#49535a"></span></button>
+            <button class="material-button" data-shell="silver" aria-label="Silver"><span style="background:#d9dddc"></span></button>
+            <button class="material-button" data-shell="gold" aria-label="Gold"><span style="background:#b79665"></span></button>
+            <button class="material-button" data-shell="cyan" aria-label="Cyan"><span style="background:#4c9aa5"></span></button>
+          </div>
+        </section>
+
+        <section class="control-section">
+          <label class="section-label" for="backgroundSelect">Background</label>
+          <select id="backgroundSelect">
+            <option value="midnight">Midnight spectrum</option>
+            <option value="aurora">Aurora</option>
+            <option value="cobalt">Cobalt</option>
+            <option value="studio">Studio white</option>
+            <option value="transparent">Transparent device</option>
+          </select>
+          <label class="accent-row" for="accentInput">
+            <span>Accent</span>
+            <input id="accentInput" type="color" value="#6ee7f5" aria-label="Accent color">
+          </label>
+        </section>
+
+        <section class="control-section">
+          <span class="section-label">Position</span>
+          <div class="range-control">
+            <div class="range-heading"><span>Rotate X</span><span class="range-value" id="rotateXValue">5°</span></div>
+            <input id="rotateX" type="range" min="-24" max="24" step="1" value="5">
+          </div>
+          <div class="range-control">
+            <div class="range-heading"><span>Rotate Y</span><span class="range-value" id="rotateYValue">-25°</span></div>
+            <input id="rotateY" type="range" min="-46" max="46" step="1" value="-25">
+          </div>
+          <div class="range-control">
+            <div class="range-heading"><span>Rotate Z</span><span class="range-value" id="rotateZValue">-7°</span></div>
+            <input id="rotateZ" type="range" min="-18" max="18" step="1" value="-7">
+          </div>
+          <div class="range-control">
+            <div class="range-heading"><span>Scale</span><span class="range-value" id="scaleValue">92%</span></div>
+            <input id="scale" type="range" min="0.62" max="1.15" step="0.01" value="0.92">
+          </div>
+          <div class="range-control">
+            <div class="range-heading"><span>Horizontal</span><span class="range-value" id="xValue">10%</span></div>
+            <input id="x" type="range" min="-0.28" max="0.28" step="0.01" value="0.10">
+          </div>
+          <div class="range-control">
+            <div class="range-heading"><span>Vertical</span><span class="range-value" id="yValue">8%</span></div>
+            <input id="y" type="range" min="-0.18" max="0.26" step="0.01" value="0.08">
+          </div>
+        </section>
+
+        <section class="control-section">
+          <span class="section-label">Copy</span>
+          <input id="kickerInput" type="text" value="PRODUCT STORY" aria-label="Kicker">
+          <input id="headlineInput" type="text" value="Design, in perspective." aria-label="Headline">
+          <input id="subheadInput" type="text" value="Local, adjustable, export-ready." aria-label="Subhead">
+          <div class="range-control copy-range">
+            <div class="range-heading"><span>Headline size</span><span class="range-value" id="headlineSizeValue">102 px</span></div>
+            <input id="headlineSize" type="range" min="72" max="180" step="2" value="102">
+          </div>
+          <div class="range-control">
+            <div class="range-heading"><span>Subhead size</span><span class="range-value" id="subheadSizeValue">38 px</span></div>
+            <input id="subheadSize" type="range" min="28" max="72" step="2" value="38">
+          </div>
+          <div class="range-control">
+            <div class="range-heading"><span>Copy width</span><span class="range-value" id="copyWidthValue">72%</span></div>
+            <input id="copyWidth" type="range" min="0.35" max="0.85" step="0.01" value="0.72">
+          </div>
+          <div class="range-control">
+            <div class="range-heading"><span>Copy top</span><span class="range-value" id="copyTopValue">8%</span></div>
+            <input id="copyTop" type="range" min="0.02" max="0.60" step="0.005" value="0.075">
+          </div>
+          <div class="range-control">
+            <div class="range-heading"><span>Copy left</span><span class="range-value" id="copyLeftValue">7%</span></div>
+            <input id="copyLeft" type="range" min="0.02" max="0.30" step="0.005" value="0.065">
+          </div>
+        </section>
+
+        <section class="control-section">
+          <span class="section-label">Output</span>
+          <div class="dimension-row">
+            <input id="widthInput" type="number" min="320" max="4096" value="1600" aria-label="Output width">
+            <span class="dimension-x">×</span>
+            <input id="heightInput" type="number" min="320" max="4096" value="1600" aria-label="Output height">
+          </div>
+        </section>
+      </aside>
+
+      <section class="preview-shell">
+        <div class="preview-viewport" id="previewViewport">
+          <div class="preview-scale" id="previewScale">
+            <div class="export-frame" id="exportFrame">
+              <div class="scene-glow"></div>
+              <div class="scene-ring"></div>
+              <div class="scene-spectrum"></div>
+              <section class="copy-block">
+                <p class="copy-kicker"></p>
+                <h2 class="copy-headline"></h2>
+                <p class="copy-subhead"></p>
+              </section>
+              <section class="device-stage">
+                <div class="device-shadow"></div>
+                <div class="phone-rig">
+                  <div class="phone-plane phone-back"></div>
+                  <div class="phone-side phone-side-left"></div>
+                  <div class="phone-side phone-side-right"></div>
+                  <div class="phone-side phone-side-top"></div>
+                  <div class="phone-side phone-side-bottom"></div>
+                  <div class="phone-plane phone-front">
+                    <div class="phone-screen"><img alt="App screenshot preview"></div>
+                    <div class="phone-glass"></div>
+                    <div class="phone-island"></div>
+                    <div class="phone-button phone-button-power"></div>
+                    <div class="phone-button phone-button-volume-up"></div>
+                    <div class="phone-button phone-button-volume-down"></div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+          <span class="preview-meta" id="previewMeta">1600 × 1600</span>
+        </div>
+        <div class="status-toast" id="statusToast" role="status"></div>
+      </section>
+    </main>
+
+    <script src="/scene.js"></script>
+    <script src="/studio.js"></script>
+  </body>
+</html>
