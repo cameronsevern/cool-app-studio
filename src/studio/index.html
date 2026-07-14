@@ -27,132 +27,302 @@
 
     <main class="studio-layout">
       <aside class="controls" aria-label="Mockup controls">
-        <section class="control-section">
-          <span class="section-label">Screenshot</span>
-          <div class="source-row">
-            <button class="source-button" id="sourceButton">Choose screenshot</button>
-            <span class="source-name" id="sourceName">Demo screenshot</span>
+        <details class="control-section" open>
+          <summary>Canvas</summary>
+          <div class="control-content">
+            <label class="field-label" for="canvasPresetSelect">Store target</label>
+            <select id="canvasPresetSelect">
+              <option value="custom">Custom</option>
+              <optgroup label="Apple App Store">
+                <option value="apple-iphone-69">iPhone 6.9″ · 1320 × 2868</option>
+                <option value="apple-ipad-13">iPad 13″ · 2064 × 2752</option>
+              </optgroup>
+              <optgroup label="Google Play">
+                <option value="google-phone">Phone · 1080 × 1920</option>
+                <option value="google-feature">Feature graphic · 1024 × 500</option>
+              </optgroup>
+            </select>
+            <div class="segmented-control top-gap" id="orientationButtons" aria-label="Canvas orientation">
+              <button type="button" data-orientation="portrait">Portrait</button>
+              <button type="button" data-orientation="landscape">Landscape</button>
+            </div>
+            <div class="dimension-row top-gap">
+              <input id="widthInput" type="number" min="320" max="4096" value="1600" aria-label="Output width">
+              <span class="dimension-x">×</span>
+              <input id="heightInput" type="number" min="320" max="4096" value="1600" aria-label="Output height">
+            </div>
+            <p class="field-help" id="canvasDescription">Custom canvas dimensions.</p>
+            <button class="full-button" id="fitCompositionButton" type="button">Fit composition to canvas</button>
           </div>
-          <input id="sourceInput" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-        </section>
+        </details>
 
-        <section class="control-section">
-          <label class="section-label" for="deviceSelect">Device</label>
-          <select id="deviceSelect">
-            <option value="iphone">iPhone · Dynamic Island</option>
-            <option value="pixel">Pixel · hole punch</option>
-          </select>
-          <label class="toggle-row" for="showDeviceInput">
-            <input id="showDeviceInput" type="checkbox" checked>
-            <span>Show 3D device</span>
-          </label>
-        </section>
+        <details class="control-section" open>
+          <summary>Screenshot</summary>
+          <div class="control-content">
+            <div class="source-row">
+              <button class="source-button" id="sourceButton" type="button">Choose screenshot</button>
+              <span class="source-name" id="sourceName">Demo screenshot</span>
+            </div>
+            <input id="sourceInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden>
+          </div>
+        </details>
 
-        <section class="control-section">
-          <span class="section-label">Camera preset</span>
-          <div class="preset-grid" id="presetGrid">
-            <button class="preset-button is-active" data-preset="hero-right">Hero right</button>
-            <button class="preset-button" data-preset="hero-left">Hero left</button>
-            <button class="preset-button" data-preset="floating">Floating</button>
-            <button class="preset-button" data-preset="low-angle">Low angle</button>
-            <button class="preset-button" data-preset="upright">Upright</button>
-          </div>
-        </section>
+        <details class="control-section" open>
+          <summary>Device</summary>
+          <div class="control-content">
+            <label class="field-label" for="deviceSelect">Frame</label>
+            <select id="deviceSelect">
+              <option value="iphone">iPhone · Dynamic Island</option>
+              <option value="pixel">Pixel · hole punch</option>
+            </select>
+            <label class="toggle-row" for="showDeviceInput">
+              <input id="showDeviceInput" type="checkbox" checked>
+              <span>Show 3D device</span>
+            </label>
 
-        <section class="control-section">
-          <span class="section-label">Chassis</span>
-          <div class="material-grid" id="materialGrid">
-            <button class="material-button is-active" data-shell="graphite" aria-label="Graphite"><span style="background:#49535a"></span></button>
-            <button class="material-button" data-shell="silver" aria-label="Silver"><span style="background:#d9dddc"></span></button>
-            <button class="material-button" data-shell="gold" aria-label="Gold"><span style="background:#b79665"></span></button>
-            <button class="material-button" data-shell="cyan" aria-label="Cyan"><span style="background:#4c9aa5"></span></button>
-          </div>
-        </section>
+            <span class="field-label top-gap">Camera</span>
+            <div class="preset-grid" id="presetGrid">
+              <button class="preset-button is-active" type="button" data-preset="hero-right">Hero right</button>
+              <button class="preset-button" type="button" data-preset="hero-left">Hero left</button>
+              <button class="preset-button" type="button" data-preset="floating">Floating</button>
+              <button class="preset-button" type="button" data-preset="low-angle">Low angle</button>
+              <button class="preset-button" type="button" data-preset="upright">Upright</button>
+            </div>
 
-        <section class="control-section">
-          <label class="section-label" for="backgroundSelect">Background</label>
-          <select id="backgroundSelect">
-            <option value="midnight">Midnight spectrum</option>
-            <option value="aurora">Aurora</option>
-            <option value="cobalt">Cobalt</option>
-            <option value="studio">Studio white</option>
-            <option value="transparent">Transparent device</option>
-          </select>
-          <label class="accent-row" for="accentInput">
-            <span>Accent</span>
-            <input id="accentInput" type="color" value="#6ee7f5" aria-label="Accent color">
-          </label>
-        </section>
+            <span class="field-label top-gap">Chassis</span>
+            <div class="material-grid" id="materialGrid">
+              <button class="material-button is-active" type="button" data-shell="graphite" aria-label="Graphite"><span style="background:#49535a"></span></button>
+              <button class="material-button" type="button" data-shell="silver" aria-label="Silver"><span style="background:#d9dddc"></span></button>
+              <button class="material-button" type="button" data-shell="gold" aria-label="Gold"><span style="background:#b79665"></span></button>
+              <button class="material-button" type="button" data-shell="cyan" aria-label="Cyan"><span style="background:#4c9aa5"></span></button>
+            </div>
+          </div>
+        </details>
 
-        <section class="control-section">
-          <span class="section-label">Position</span>
-          <div class="range-control">
-            <div class="range-heading"><span>Rotate X</span><span class="range-value" id="rotateXValue">5°</span></div>
-            <input id="rotateX" type="range" min="-24" max="24" step="1" value="5">
+        <details class="control-section">
+          <summary>Device position</summary>
+          <div class="control-content">
+            <div class="range-control">
+              <div class="range-heading"><span>Rotate X</span><span class="range-value" id="rotateXValue">5°</span></div>
+              <input id="rotateX" type="range" min="-24" max="24" step="1" value="5" aria-label="Rotate X">
+            </div>
+            <div class="range-control">
+              <div class="range-heading"><span>Rotate Y</span><span class="range-value" id="rotateYValue">-25°</span></div>
+              <input id="rotateY" type="range" min="-46" max="46" step="1" value="-25" aria-label="Rotate Y">
+            </div>
+            <div class="range-control">
+              <div class="range-heading"><span>Rotate Z</span><span class="range-value" id="rotateZValue">-7°</span></div>
+              <input id="rotateZ" type="range" min="-18" max="18" step="1" value="-7" aria-label="Rotate Z">
+            </div>
+            <div class="range-control">
+              <div class="range-heading"><span>Scale</span><span class="range-value" id="scaleValue">92%</span></div>
+              <input id="scale" type="range" min="0.45" max="1.35" step="0.01" value="0.92" aria-label="Device scale">
+            </div>
+            <div class="range-control">
+              <div class="range-heading"><span>Horizontal</span><span class="range-value" id="xValue">10%</span></div>
+              <input id="x" type="range" min="-0.40" max="0.40" step="0.01" value="0.10" aria-label="Device horizontal position">
+            </div>
+            <div class="range-control">
+              <div class="range-heading"><span>Vertical</span><span class="range-value" id="yValue">8%</span></div>
+              <input id="y" type="range" min="-0.30" max="0.40" step="0.01" value="0.08" aria-label="Device vertical position">
+            </div>
           </div>
-          <div class="range-control">
-            <div class="range-heading"><span>Rotate Y</span><span class="range-value" id="rotateYValue">-25°</span></div>
-            <input id="rotateY" type="range" min="-46" max="46" step="1" value="-25">
-          </div>
-          <div class="range-control">
-            <div class="range-heading"><span>Rotate Z</span><span class="range-value" id="rotateZValue">-7°</span></div>
-            <input id="rotateZ" type="range" min="-18" max="18" step="1" value="-7">
-          </div>
-          <div class="range-control">
-            <div class="range-heading"><span>Scale</span><span class="range-value" id="scaleValue">92%</span></div>
-            <input id="scale" type="range" min="0.62" max="1.15" step="0.01" value="0.92">
-          </div>
-          <div class="range-control">
-            <div class="range-heading"><span>Horizontal</span><span class="range-value" id="xValue">10%</span></div>
-            <input id="x" type="range" min="-0.28" max="0.28" step="0.01" value="0.10">
-          </div>
-          <div class="range-control">
-            <div class="range-heading"><span>Vertical</span><span class="range-value" id="yValue">8%</span></div>
-            <input id="y" type="range" min="-0.18" max="0.26" step="0.01" value="0.08">
-          </div>
-        </section>
+        </details>
 
-        <section class="control-section">
-          <span class="section-label">Copy</span>
-          <input id="kickerInput" type="text" value="PRODUCT STORY" aria-label="Kicker">
-          <input id="headlineInput" type="text" value="Design, in perspective." aria-label="Headline">
-          <input id="subheadInput" type="text" value="Local, adjustable, export-ready." aria-label="Subhead">
-          <div class="range-control copy-range">
-            <div class="range-heading"><span>Headline size</span><span class="range-value" id="headlineSizeValue">102 px</span></div>
-            <input id="headlineSize" type="range" min="72" max="180" step="2" value="102">
-          </div>
-          <div class="range-control">
-            <div class="range-heading"><span>Subhead size</span><span class="range-value" id="subheadSizeValue">38 px</span></div>
-            <input id="subheadSize" type="range" min="28" max="72" step="2" value="38">
-          </div>
-          <div class="range-control">
-            <div class="range-heading"><span>Copy width</span><span class="range-value" id="copyWidthValue">72%</span></div>
-            <input id="copyWidth" type="range" min="0.35" max="0.85" step="0.01" value="0.72">
-          </div>
-          <div class="range-control">
-            <div class="range-heading"><span>Copy top</span><span class="range-value" id="copyTopValue">8%</span></div>
-            <input id="copyTop" type="range" min="0.02" max="0.60" step="0.005" value="0.075">
-          </div>
-          <div class="range-control">
-            <div class="range-heading"><span>Copy left</span><span class="range-value" id="copyLeftValue">7%</span></div>
-            <input id="copyLeft" type="range" min="0.02" max="0.30" step="0.005" value="0.065">
-          </div>
-        </section>
+        <details class="control-section" open>
+          <summary>Background</summary>
+          <div class="control-content">
+            <label class="field-label" for="backgroundSelect">Mode</label>
+            <select id="backgroundSelect">
+              <optgroup label="Built-in">
+                <option value="midnight">Midnight spectrum</option>
+                <option value="aurora">Aurora</option>
+                <option value="cobalt">Cobalt</option>
+                <option value="studio">Studio white</option>
+              </optgroup>
+              <optgroup label="Custom">
+                <option value="solid">Solid color</option>
+                <option value="gradient">Gradient</option>
+                <option value="image">Local image</option>
+                <option value="transparent">Transparent device</option>
+              </optgroup>
+            </select>
 
-        <section class="control-section">
-          <span class="section-label">Output</span>
-          <div class="dimension-row">
-            <input id="widthInput" type="number" min="320" max="4096" value="1600" aria-label="Output width">
-            <span class="dimension-x">×</span>
-            <input id="heightInput" type="number" min="320" max="4096" value="1600" aria-label="Output height">
+            <div id="backgroundColorControls" hidden>
+              <label class="color-row top-gap" for="backgroundColorA">
+                <span>Primary color</span>
+                <input id="backgroundColorA" type="color" value="#050b0f">
+              </label>
+              <label class="color-row" id="backgroundColorBRow" for="backgroundColorB">
+                <span>Secondary color</span>
+                <input id="backgroundColorB" type="color" value="#10202a">
+              </label>
+              <div class="range-control" id="backgroundAngleRow">
+                <div class="range-heading"><span>Gradient angle</span><span class="range-value" id="backgroundAngleValue">145°</span></div>
+                <input id="backgroundAngle" type="range" min="0" max="360" step="1" value="145" aria-label="Gradient angle">
+              </div>
+            </div>
+
+            <div id="backgroundImageControls" hidden>
+              <div class="source-row top-gap">
+                <button class="source-button" id="backgroundImageButton" type="button">Choose image</button>
+                <span class="source-name" id="backgroundImageName">No image selected</span>
+              </div>
+              <input id="backgroundImageInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden>
+              <label class="field-label top-gap" for="backgroundImageFit">Image fit</label>
+              <select id="backgroundImageFit">
+                <option value="cover">Cover canvas</option>
+                <option value="contain">Contain image</option>
+                <option value="fill">Stretch to fill</option>
+              </select>
+              <div class="range-control top-gap">
+                <div class="range-heading"><span>Horizontal focus</span><span class="range-value" id="backgroundImageXValue">50%</span></div>
+                <input id="backgroundImageX" type="range" min="0" max="100" step="1" value="50" aria-label="Background horizontal focus">
+              </div>
+              <div class="range-control">
+                <div class="range-heading"><span>Vertical focus</span><span class="range-value" id="backgroundImageYValue">50%</span></div>
+                <input id="backgroundImageY" type="range" min="0" max="100" step="1" value="50" aria-label="Background vertical focus">
+              </div>
+              <div class="range-control">
+                <div class="range-heading"><span>Zoom</span><span class="range-value" id="backgroundImageZoomValue">100%</span></div>
+                <input id="backgroundImageZoom" type="range" min="0.5" max="2" step="0.01" value="1" aria-label="Background zoom">
+              </div>
+              <div class="range-control">
+                <div class="range-heading"><span>Blur</span><span class="range-value" id="backgroundImageBlurValue">0 px</span></div>
+                <input id="backgroundImageBlur" type="range" min="0" max="40" step="1" value="0" aria-label="Background blur">
+              </div>
+              <label class="color-row" for="backgroundOverlay">
+                <span>Overlay color</span>
+                <input id="backgroundOverlay" type="color" value="#000000">
+              </label>
+              <div class="range-control">
+                <div class="range-heading"><span>Overlay</span><span class="range-value" id="backgroundOverlayOpacityValue">18%</span></div>
+                <input id="backgroundOverlayOpacity" type="range" min="0" max="0.9" step="0.01" value="0.18" aria-label="Background overlay opacity">
+              </div>
+              <button class="text-button" id="removeBackgroundImageButton" type="button">Remove selected image</button>
+            </div>
+
+            <label class="color-row top-gap" for="accentInput">
+              <span>Scene accent</span>
+              <input id="accentInput" type="color" value="#6ee7f5" aria-label="Scene accent color">
+            </label>
+            <button class="text-button" id="resetBackgroundButton" type="button">Reset background</button>
           </div>
-        </section>
+        </details>
+
+        <details class="control-section" open>
+          <summary>Typography</summary>
+          <div class="control-content">
+            <input id="kickerInput" type="text" value="PRODUCT STORY" aria-label="Kicker">
+            <input id="headlineInput" type="text" value="Design, in perspective." aria-label="Headline">
+            <input id="subheadInput" type="text" value="Local, adjustable, export-ready." aria-label="Subhead">
+
+            <label class="field-label top-gap" for="fontFamilySelect">Font family</label>
+            <select id="fontFamilySelect">
+              <option value="system">System sans</option>
+              <option value="geometric">Geometric sans</option>
+              <option value="rounded">Rounded</option>
+              <option value="serif">Editorial serif</option>
+              <option value="mono">Monospace</option>
+              <option value="custom">Local font file…</option>
+            </select>
+            <div id="customFontControls" hidden>
+              <div class="source-row top-gap">
+                <button class="source-button" id="fontFileButton" type="button">Choose font</button>
+                <span class="source-name" id="fontFileName">No font selected</span>
+              </div>
+              <input id="fontFileInput" type="file" accept=".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf" hidden>
+            </div>
+
+            <span class="field-label top-gap">Alignment</span>
+            <div class="segmented-control" id="textAlignButtons" aria-label="Text alignment">
+              <button type="button" data-align="left">Left</button>
+              <button type="button" data-align="center">Center</button>
+              <button type="button" data-align="right">Right</button>
+            </div>
+
+            <label class="toggle-row" for="autoTextColorsInput">
+              <input id="autoTextColorsInput" type="checkbox" checked>
+              <span>Automatic text colors</span>
+            </label>
+            <div id="textColorControls" hidden>
+              <label class="color-row top-gap" for="headlineColorInput"><span>Headline</span><input id="headlineColorInput" type="color" value="#f7f5f0"></label>
+              <label class="color-row" for="subheadColorInput"><span>Subhead</span><input id="subheadColorInput" type="color" value="#aebbc4"></label>
+              <label class="color-row" for="kickerColorInput"><span>Kicker</span><input id="kickerColorInput" type="color" value="#6ee7f5"></label>
+            </div>
+
+            <span class="field-label top-gap">Headline</span>
+            <div class="range-control">
+              <div class="range-heading"><span>Size</span><span class="range-value" id="headlineSizeValue">102 px</span></div>
+              <input id="headlineSize" type="range" min="32" max="240" step="2" value="102" aria-label="Headline size">
+            </div>
+            <div class="range-control">
+              <div class="range-heading"><span>Weight</span><span class="range-value" id="headlineWeightValue">820</span></div>
+              <input id="headlineWeight" type="range" min="200" max="900" step="10" value="820" aria-label="Headline weight">
+            </div>
+            <div class="range-control">
+              <div class="range-heading"><span>Line height</span><span class="range-value" id="headlineLineHeightValue">0.98</span></div>
+              <input id="headlineLineHeight" type="range" min="0.75" max="1.5" step="0.01" value="0.98" aria-label="Headline line height">
+            </div>
+            <div class="range-control">
+              <div class="range-heading"><span>Letter spacing</span><span class="range-value" id="headlineTrackingValue">-0.052 em</span></div>
+              <input id="headlineTracking" type="range" min="-0.12" max="0.12" step="0.002" value="-0.052" aria-label="Headline letter spacing">
+            </div>
+
+            <span class="field-label top-gap">Subhead and kicker</span>
+            <div class="range-control">
+              <div class="range-heading"><span>Subhead size</span><span class="range-value" id="subheadSizeValue">38 px</span></div>
+              <input id="subheadSize" type="range" min="18" max="120" step="2" value="38" aria-label="Subhead size">
+            </div>
+            <div class="range-control">
+              <div class="range-heading"><span>Subhead weight</span><span class="range-value" id="subheadWeightValue">520</span></div>
+              <input id="subheadWeight" type="range" min="200" max="900" step="10" value="520" aria-label="Subhead weight">
+            </div>
+            <div class="range-control">
+              <div class="range-heading"><span>Subhead line height</span><span class="range-value" id="subheadLineHeightValue">1.20</span></div>
+              <input id="subheadLineHeight" type="range" min="0.85" max="2" step="0.01" value="1.2" aria-label="Subhead line height">
+            </div>
+            <div class="range-control">
+              <div class="range-heading"><span>Kicker size</span><span class="range-value" id="kickerSizeValue">24 px</span></div>
+              <input id="kickerSize" type="range" min="12" max="72" step="1" value="24" aria-label="Kicker size">
+            </div>
+            <label class="toggle-row" for="kickerUppercaseInput">
+              <input id="kickerUppercaseInput" type="checkbox" checked>
+              <span>Uppercase kicker</span>
+            </label>
+
+            <span class="field-label top-gap">Copy position</span>
+            <div class="range-control">
+              <div class="range-heading"><span>Width</span><span class="range-value" id="copyWidthValue">72%</span></div>
+              <input id="copyWidth" type="range" min="0.25" max="0.95" step="0.01" value="0.72" aria-label="Copy width">
+            </div>
+            <div class="range-control">
+              <div class="range-heading"><span>Top</span><span class="range-value" id="copyTopValue">8%</span></div>
+              <input id="copyTop" type="range" min="0" max="0.80" step="0.005" value="0.075" aria-label="Copy top position">
+            </div>
+            <div class="range-control">
+              <div class="range-heading"><span>Left</span><span class="range-value" id="copyLeftValue">7%</span></div>
+              <input id="copyLeft" type="range" min="0" max="0.70" step="0.005" value="0.065" aria-label="Copy left position">
+            </div>
+            <button class="text-button" id="resetTypographyButton" type="button">Reset typography</button>
+          </div>
+        </details>
+
+        <details class="control-section" open>
+          <summary>Export readiness</summary>
+          <div class="control-content">
+            <div class="preflight-status" id="preflightStatus" role="status">Custom canvas · ready to export.</div>
+            <p class="field-help">Rendering happens through the local-only server. Selected screenshots, backgrounds, and fonts are not uploaded.</p>
+          </div>
+        </details>
       </aside>
 
       <section class="preview-shell">
         <div class="preview-viewport" id="previewViewport">
           <div class="preview-scale" id="previewScale">
             <div class="export-frame" id="exportFrame">
+              <img class="scene-background-image" alt="" hidden>
+              <div class="scene-background-overlay"></div>
               <div class="scene-glow"></div>
               <div class="scene-ring"></div>
               <div class="scene-spectrum"></div>
@@ -181,7 +351,7 @@
               </section>
             </div>
           </div>
-          <span class="preview-meta" id="previewMeta">1600 × 1600</span>
+          <span class="preview-meta" id="previewMeta">1600 × 1600 · Custom</span>
         </div>
         <div class="status-toast" id="statusToast" role="status"></div>
       </section>

@@ -17,6 +17,8 @@
   </head>
   <body>
     <main class="export-frame" id="exportFrame">
+      <img class="scene-background-image" alt="" hidden>
+      <div class="scene-background-overlay"></div>
       <div class="scene-glow"></div>
       <div class="scene-ring"></div>
       <div class="scene-spectrum"></div>
@@ -48,18 +50,31 @@
     <script>
       (async () => {
         const job = new URLSearchParams(window.location.search).get('job');
+        async function decodeImage(dataUrl) {
+          if (!dataUrl) return;
+          const image = new Image();
+          image.decoding = 'sync';
+          image.src = dataUrl;
+          await image.decode();
+        }
         try {
           const response = await fetch(`/api/job/${encodeURIComponent(job)}`);
           if (!response.ok) throw new Error(`Render job failed: ${response.status}`);
           const payload = await response.json();
-          const image = new Image();
-          image.decoding = 'sync';
-          image.src = payload.imageDataUrl;
-          await image.decode();
+          const assets = payload.assets ?? { screenImageUrl: payload.imageDataUrl };
+          await Promise.all([
+            decodeImage(assets.screenImageUrl),
+            decodeImage(assets.backgroundImageUrl),
+          ]);
+          if (assets.fontDataUrl) {
+            const fontName = payload.config.customFontName ?? 'Mockup Studio Custom';
+            const font = new FontFace(fontName, `url(${assets.fontDataUrl})`);
+            document.fonts.add(await font.load());
+          }
           MockupScene.applyScene(
             document.getElementById('exportFrame'),
             payload.config,
-            payload.imageDataUrl,
+            assets,
           );
           await document.fonts.ready;
           await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
