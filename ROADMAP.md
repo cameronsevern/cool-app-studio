@@ -46,7 +46,8 @@ Implemented in the current checkout, though not yet published as an open-source
 release:
 
 - [x] Loopback-only editor and renderer with no required account or cloud service.
-- [x] App Store, Google Play, landscape, and custom canvas targets.
+- [x] App Store iPhone 6.9-inch and iPad 13-inch targets, plus Google Play,
+  landscape, and custom canvas targets.
 - [x] iPhone-style and Pixel-style parametric device presentations.
 - [x] Local screenshots, background images, custom fonts, and asset-free presets.
 - [x] Portable `.screenshot-forge` projects with schema normalization and migration.
