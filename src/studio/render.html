@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mockup Studio Render</title>
+    <title>App Screenshot Forge Render</title>
     <link rel="stylesheet" href="/scene.css">
     <style>
       html,
@@ -67,7 +67,7 @@
             decodeImage(assets.backgroundImageUrl),
           ]);
           if (assets.fontDataUrl) {
-            const fontName = payload.config.customFontName ?? 'Mockup Studio Custom';
+            const fontName = payload.config.customFontName ?? 'App Screenshot Forge Custom';
             const font = new FontFace(fontName, `url(${assets.fontDataUrl})`);
             document.fonts.add(await font.load());
           }

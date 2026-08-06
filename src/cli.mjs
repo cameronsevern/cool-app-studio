@@ -9,6 +9,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir, platform } from 'node:os';
 import { dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createZip } from './zip.mjs';
 
 const require = createRequire(import.meta.url);
 let playwright;
@@ -25,6 +26,30 @@ const studioDirectory = resolve(toolDirectory, 'studio');
 const examplesDirectory = resolve(projectRoot, 'examples');
 const renderJobs = new Map();
 let browserPromise;
+
+const SECURITY_HEADERS = {
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    "base-uri 'none'",
+    "connect-src 'self'",
+    "font-src 'self' data:",
+    "form-action 'none'",
+    "frame-ancestors 'none'",
+    "frame-src 'none'",
+    "img-src 'self' data: blob:",
+    "media-src 'none'",
+    "object-src 'none'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "worker-src 'none'",
+  ].join('; '),
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Resource-Policy': 'same-origin',
+  'Permissions-Policy': 'camera=(), geolocation=(), microphone=(), payment=(), usb=()',
+  'Referrer-Policy': 'no-referrer',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+};
 
 const MIME_TYPES = {
   '.css': 'text/css; charset=utf-8',
@@ -79,11 +104,45 @@ function parseFlags(values) {
 
 function send(response, status, body, contentType = 'text/plain; charset=utf-8') {
   response.writeHead(status, {
+    ...SECURITY_HEADERS,
     'Content-Type': contentType,
     'Cache-Control': 'no-store',
-    'X-Content-Type-Options': 'nosniff',
   });
   response.end(body);
+}
+
+function validateRequest(request, response, server, url) {
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    send(response, 503, 'Local server is not ready');
+    return false;
+  }
+
+  const expectedHost = `127.0.0.1:${address.port}`;
+  if (request.headers.host !== expectedHost) {
+    send(response, 421, 'Request host is not allowed');
+    return false;
+  }
+
+  if (request.method !== 'POST' || !url.pathname.startsWith('/api/')) return true;
+
+  const expectedOrigin = `http://${expectedHost}`;
+  const origin = request.headers.origin;
+  if (origin && origin !== expectedOrigin) {
+    send(response, 403, 'Request origin is not allowed');
+    return false;
+  }
+
+  const contentType = String(request.headers['content-type'] ?? '')
+    .split(';', 1)[0]
+    .trim()
+    .toLowerCase();
+  if (contentType !== 'application/json') {
+    send(response, 415, 'API requests must use application/json');
+    return false;
+  }
+
+  return true;
 }
 
 async function readRequestJson(request) {
@@ -193,10 +252,67 @@ async function renderBuffer(baseUrl, config, assets) {
   }
 }
 
+async function renderSpanBuffers(baseUrl, items, assetData, spanDevice) {
+  const width = clampDimension(items[0].config?.width);
+  const height = clampDimension(items[0].config?.height);
+  const totalWidth = width * items.length;
+  if (totalWidth > 20_480 || totalWidth * height > 100_000_000) {
+    throw new Error('The spanning range is too large to render safely; use fewer panels or a smaller canvas');
+  }
+  const jobId = randomUUID();
+  renderJobs.set(jobId, {
+    items: items.map((item) => ({
+      ...item,
+      config: { ...item.config, width, height },
+    })),
+    assets: assetData,
+    spanDevice,
+  });
+
+  const browser = await getBrowser();
+  const page = await browser.newPage({
+    viewport: { width: totalWidth, height },
+    deviceScaleFactor: 1,
+  });
+  const consoleErrors = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text());
+  });
+  page.on('pageerror', (error) => consoleErrors.push(error.message));
+
+  try {
+    await page.goto(`${baseUrl}/render-set.html?job=${encodeURIComponent(jobId)}`, {
+      waitUntil: 'networkidle',
+    });
+    await page.waitForFunction(() => window.renderReady || window.renderError, null, {
+      timeout: 20_000,
+    });
+    const renderError = await page.evaluate(() => window.renderError ?? null);
+    if (renderError) throw new Error(renderError);
+    if (consoleErrors.length > 0) {
+      throw new Error(`Browser set render error: ${consoleErrors.join(' | ')}`);
+    }
+    const buffers = [];
+    for (let index = 0; index < items.length; index += 1) {
+      buffers.push(await page.screenshot({
+        type: 'png',
+        clip: { x: index * width, y: 0, width, height },
+        omitBackground: items[index].config?.background === 'transparent',
+        animations: 'disabled',
+      }));
+    }
+    return buffers;
+  } finally {
+    renderJobs.delete(jobId);
+    await page.close();
+  }
+}
+
 function createStudioServer() {
   const server = createServer(async (request, response) => {
     try {
       const url = new URL(request.url, 'http://127.0.0.1');
+      if (!validateRequest(request, response, server, url)) return;
 
       if (request.method === 'GET' && url.pathname === '/health') {
         return send(
@@ -208,7 +324,10 @@ function createStudioServer() {
       }
 
       if (request.method === 'GET' && url.pathname === '/favicon.ico') {
-        response.writeHead(204, { 'Cache-Control': 'public, max-age=86400' });
+        response.writeHead(204, {
+          ...SECURITY_HEADERS,
+          'Cache-Control': 'public, max-age=86400',
+        });
         return response.end();
       }
 
@@ -251,12 +370,131 @@ function createStudioServer() {
         return send(response, 200, png, 'image/png');
       }
 
+      if (request.method === 'POST' && url.pathname === '/api/render-batch') {
+        const payload = await readRequestJson(request);
+        if (!Array.isArray(payload.items) || payload.items.length === 0) {
+          return send(response, 400, 'A batch requires at least one slide');
+        }
+        if (payload.items.length > 10) {
+          return send(response, 400, 'A batch can contain at most 10 slides');
+        }
+        const assetData = payload.assets ?? {};
+        let spanDevice = null;
+        if (payload.spanDevice?.enabled) {
+          const startIndex = Number(payload.spanDevice.startIndex);
+          const endIndex = Number(payload.spanDevice.endIndex);
+          const sourceIndex = Number(payload.spanDevice.sourceIndex);
+          if (![startIndex, endIndex, sourceIndex].every(Number.isInteger)) {
+            return send(response, 400, 'The spanning panel range is invalid');
+          }
+          if (startIndex < 0 || endIndex >= payload.items.length || endIndex <= startIndex) {
+            return send(response, 400, 'A spanning device requires at least two adjacent panels');
+          }
+          if (endIndex - startIndex + 1 > 5) {
+            return send(response, 400, 'A spanning device can cross at most five panels');
+          }
+          if (sourceIndex < startIndex || sourceIndex > endIndex) {
+            return send(response, 400, 'The spanning screenshot source must be inside its panel range');
+          }
+          const spanValues = {
+            x: Number(payload.spanDevice.x ?? 0.5),
+            y: Number(payload.spanDevice.y ?? 0.08),
+            scale: Number(payload.spanDevice.scale ?? 1),
+            rotateX: Number(payload.spanDevice.rotateX ?? 5),
+            rotateY: Number(payload.spanDevice.rotateY ?? -25),
+            rotateZ: Number(payload.spanDevice.rotateZ ?? -7),
+          };
+          if (!Object.values(spanValues).every(Number.isFinite)) {
+            return send(response, 400, 'The spanning device transform is invalid');
+          }
+          const spanWidth = clampDimension(payload.items[startIndex].config?.width);
+          const spanHeight = clampDimension(payload.items[startIndex].config?.height);
+          const dimensionsMatch = payload.items
+            .slice(startIndex, endIndex + 1)
+            .every((item) => clampDimension(item.config?.width) === spanWidth
+              && clampDimension(item.config?.height) === spanHeight);
+          if (!dimensionsMatch) {
+            return send(response, 400, 'Spanning panels must use the same canvas dimensions');
+          }
+          spanDevice = {
+            enabled: true,
+            startIndex,
+            endIndex,
+            sourceIndex,
+            x: Math.max(0, Math.min(1, spanValues.x)),
+            y: Math.max(-0.5, Math.min(0.5, spanValues.y)),
+            scale: Math.max(0.4, Math.min(2, spanValues.scale)),
+            rotateX: Math.max(-24, Math.min(24, spanValues.rotateX)),
+            rotateY: Math.max(-46, Math.min(46, spanValues.rotateY)),
+            rotateZ: Math.max(-18, Math.min(18, spanValues.rotateZ)),
+          };
+        }
+        const address = server.address();
+        const baseUrl = `http://127.0.0.1:${address.port}`;
+        const buffers = new Array(payload.items.length);
+        for (const [index, item] of payload.items.entries()) {
+          const assets = {
+            screenImageUrl: assetData[item.screenshotAssetId] ?? '',
+            backgroundImageUrl: item.backgroundAssetId
+              ? (assetData[item.backgroundAssetId] ?? '')
+              : '',
+            fontDataUrl: item.fontAssetId ? (assetData[item.fontAssetId] ?? '') : '',
+          };
+          const isSpanned = spanDevice && index >= spanDevice.startIndex && index <= spanDevice.endIndex;
+          const needsOwnScreenshot = !isSpanned || index === spanDevice.sourceIndex;
+          if (needsOwnScreenshot && !assets.screenImageUrl.startsWith('data:image/')) {
+            return send(response, 400, `Slide ${index + 1} is missing a screenshot`);
+          }
+          if (item.config?.background === 'image' && !assets.backgroundImageUrl.startsWith('data:image/')) {
+            return send(response, 400, `Slide ${index + 1} is missing the shared background image`);
+          }
+          if (item.config?.fontFamily === 'custom' && !assets.fontDataUrl.startsWith('data:')) {
+            return send(response, 400, `Slide ${index + 1} is missing the shared font`);
+          }
+          if (!isSpanned) buffers[index] = await renderBuffer(baseUrl, item.config ?? {}, assets);
+        }
+        if (spanDevice) {
+          const spanItems = payload.items.slice(spanDevice.startIndex, spanDevice.endIndex + 1);
+          const spanBuffers = await renderSpanBuffers(
+            baseUrl,
+            spanItems,
+            assetData,
+            {
+              ...spanDevice,
+              startIndex: 0,
+              endIndex: spanItems.length - 1,
+              sourceIndex: spanDevice.sourceIndex - spanDevice.startIndex,
+            },
+          );
+          spanBuffers.forEach((buffer, index) => {
+            buffers[spanDevice.startIndex + index] = buffer;
+          });
+        }
+        if (payload.outputIndex !== undefined) {
+          const outputIndex = Number(payload.outputIndex);
+          if (!Number.isInteger(outputIndex) || outputIndex < 0 || outputIndex >= buffers.length) {
+            return send(response, 400, 'The requested output panel is invalid');
+          }
+          return send(response, 200, buffers[outputIndex], 'image/png');
+        }
+        const entries = payload.items.map((item, index) => {
+          const filename = String(item.filename ?? `slide-${index + 1}.png`)
+            .split(/[\\/]/)
+            .pop()
+            .replace(/[^a-zA-Z0-9._-]+/g, '-');
+          return { name: filename || `slide-${index + 1}.png`, data: buffers[index] };
+        });
+        return send(response, 200, createZip(entries), 'application/zip');
+      }
+
       const requestedFile = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
       const allowedFiles = new Set([
         'index.html',
         'render.html',
+        'render-set.html',
         'scene.css',
         'scene.js',
+        'project.js',
         'studio.css',
         'studio.js',
       ]);
@@ -316,9 +554,9 @@ async function serve(flags) {
   const requestedPort = Number(flags.port ?? 4312);
   const port = await listen(server, requestedPort, flags.port === undefined);
   const url = `http://127.0.0.1:${port}`;
-  console.log(`Mockup Studio: ${url}`);
+  console.log(`App Screenshot Forge: ${url}`);
   if (port !== requestedPort) {
-    console.log(`Port ${requestedPort} was busy, so Mockup Studio selected ${port}.`);
+    console.log(`Port ${requestedPort} was busy, so App Screenshot Forge selected ${port}.`);
   }
   console.log('Local-only renderer. Nothing is uploaded. Press Ctrl+C to stop.');
   if (flags.open) openUrl(url);
@@ -418,7 +656,7 @@ async function render(flags) {
     accent: flags.accent ?? fileConfig.accent ?? '#6ee7f5',
     showDevice: flags.noDevice ? false : (fileConfig.showDevice ?? true),
     fontFamily: fontDataUrl ? 'custom' : (flags.fontFamily ?? fileConfig.fontFamily ?? 'system'),
-    customFontName: flags.customFontName ?? fileConfig.customFontName ?? 'Mockup Studio Custom',
+    customFontName: flags.customFontName ?? fileConfig.customFontName ?? 'App Screenshot Forge Custom',
     textAlign: flags.textAlign ?? fileConfig.textAlign ?? 'left',
     autoTextColors: flags.manualTextColors ? false : (fileConfig.autoTextColors ?? true),
     headlineSize: numericFlag(flags, fileConfig, 'headlineSize', 102),
@@ -458,11 +696,13 @@ async function render(flags) {
   }
 }
 
-const [command = 'serve', ...rest] = process.argv.slice(2);
+const commandLine = process.argv.slice(2);
+const [command = 'serve', ...rest] = commandLine;
 const flags = parseFlags(rest);
+if (commandLine.length === 0) flags.open = true;
 const usage = `Usage:
-  mockup-studio serve [--port 4312] [--open]
-  mockup-studio render --input screenshot.png --output mockup.png [options]
+  app-screenshot-forge serve [--port 4312] [--open]
+  app-screenshot-forge render --input screenshot.png --output mockup.png [options]
 
 Render options:
   --config preset.json

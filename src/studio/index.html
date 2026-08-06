@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Mockup Studio</title>
+    <title>App Screenshot Forge</title>
     <link rel="stylesheet" href="/scene.css">
     <link rel="stylesheet" href="/studio.css">
   </head>
@@ -12,23 +12,41 @@
       <div class="brand">
         <div class="brand-mark">M</div>
         <div>
-          <h1>Mockup Studio</h1>
+          <h1>App Screenshot Forge</h1>
           <p>Parametric device renderer</p>
         </div>
       </div>
       <div class="header-actions">
         <span class="local-pill">Local · nothing uploaded</span>
-        <button class="secondary-button" id="loadPresetButton">Load preset</button>
-        <button class="secondary-button" id="savePresetButton">Save preset</button>
+        <button class="icon-button" id="undoButton" type="button" title="Undo (⌘Z)" aria-label="Undo">↶</button>
+        <button class="icon-button" id="redoButton" type="button" title="Redo (⇧⌘Z)" aria-label="Redo">↷</button>
+        <button class="secondary-button" id="projectOpenButton" type="button">Open project</button>
+        <button class="secondary-button" id="projectSaveButton" type="button">Save project</button>
         <button class="export-button" id="exportButton">Export PNG</button>
-        <input id="presetInput" type="file" accept="application/json,.json" hidden>
+        <button class="export-button export-set-button" id="exportSetButton">Export set</button>
+        <input id="projectInput" type="file" accept=".screenshot-forge,.mockup-studio,application/json,.json" hidden>
       </div>
     </header>
 
     <main class="studio-layout">
       <aside class="controls" aria-label="Mockup controls">
         <details class="control-section" open>
-          <summary>Canvas</summary>
+          <summary><span>Project</span><span class="scope-pill">Local set</span></summary>
+          <div class="control-content">
+            <label class="field-label" for="projectNameInput">Set name</label>
+            <input id="projectNameInput" type="text" value="Untitled screenshot set" aria-label="Project name">
+            <div class="action-grid top-gap">
+              <button class="source-button" id="newProjectButton" type="button">New set</button>
+              <button class="source-button" id="loadPresetButton" type="button">Load preset</button>
+              <button class="source-button" id="savePresetButton" type="button">Save preset</button>
+            </div>
+            <input id="presetInput" type="file" accept="application/json,.json" hidden>
+            <p class="field-help">Projects can deliberately bundle local assets. Presets remain lightweight and asset-free.</p>
+          </div>
+        </details>
+
+        <details class="control-section" open>
+          <summary><span>Canvas</span><span class="scope-pill">Shared</span></summary>
           <div class="control-content">
             <label class="field-label" for="canvasPresetSelect">Store target</label>
             <select id="canvasPresetSelect">
@@ -57,7 +75,7 @@
         </details>
 
         <details class="control-section" open>
-          <summary>Screenshot</summary>
+          <summary><span>Screenshot</span><span class="scope-pill">This slide</span></summary>
           <div class="control-content">
             <div class="source-row">
               <button class="source-button" id="sourceButton" type="button">Choose screenshot</button>
@@ -68,7 +86,7 @@
         </details>
 
         <details class="control-section" open>
-          <summary>Device</summary>
+          <summary><span>Device</span><span class="scope-pill">Shared + slide</span></summary>
           <div class="control-content">
             <label class="field-label" for="deviceSelect">Frame</label>
             <select id="deviceSelect">
@@ -100,7 +118,7 @@
         </details>
 
         <details class="control-section">
-          <summary>Device position</summary>
+          <summary><span>Device position</span><span class="scope-pill">This slide</span></summary>
           <div class="control-content">
             <div class="range-control">
               <div class="range-heading"><span>Rotate X</span><span class="range-value" id="rotateXValue">5°</span></div>
@@ -130,7 +148,43 @@
         </details>
 
         <details class="control-section" open>
-          <summary>Background</summary>
+          <summary><span>Across panels</span><span class="scope-pill">Set</span></summary>
+          <div class="control-content">
+            <label class="toggle-row span-toggle" for="spanDeviceInput">
+              <input id="spanDeviceInput" type="checkbox">
+              <span>Span one device across panels</span>
+            </label>
+            <div id="spanDeviceControls" hidden>
+              <div class="span-select-grid top-gap">
+                <label class="field-label" for="spanStartSelect">Starts on
+                  <select id="spanStartSelect" aria-label="Spanning device start panel"></select>
+                </label>
+                <label class="field-label" for="spanEndSelect">Ends on
+                  <select id="spanEndSelect" aria-label="Spanning device end panel"></select>
+                </label>
+              </div>
+              <label class="field-label top-gap" for="spanSourceSelect">Screenshot source</label>
+              <select id="spanSourceSelect" aria-label="Spanning device screenshot source"></select>
+              <div class="range-control top-gap">
+                <div class="range-heading"><span>Across the range</span><span class="range-value" id="spanXValue">50%</span></div>
+                <input id="spanX" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="Spanning device horizontal position">
+              </div>
+              <div class="range-control">
+                <div class="range-heading"><span>Vertical</span><span class="range-value" id="spanYValue">8%</span></div>
+                <input id="spanY" type="range" min="-0.5" max="0.5" step="0.01" value="0.08" aria-label="Spanning device vertical position">
+              </div>
+              <div class="range-control">
+                <div class="range-heading"><span>Scale</span><span class="range-value" id="spanScaleValue">92%</span></div>
+                <input id="spanScale" type="range" min="0.4" max="2" step="0.01" value="0.92" aria-label="Spanning device scale">
+              </div>
+              <button class="full-button" id="spanUseSelectedButton" type="button">Use selected slide’s angle</button>
+            </div>
+            <p class="field-help" id="spanDeviceHelp">Add at least two panels to create a continuous device.</p>
+          </div>
+        </details>
+
+        <details class="control-section" open>
+          <summary><span>Background</span><span class="scope-pill">Shared</span></summary>
           <div class="control-content">
             <label class="field-label" for="backgroundSelect">Mode</label>
             <select id="backgroundSelect">
@@ -211,7 +265,7 @@
         </details>
 
         <details class="control-section" open>
-          <summary>Typography</summary>
+          <summary><span>Copy &amp; typography</span><span class="scope-pill">Shared + slide</span></summary>
           <div class="control-content">
             <input id="kickerInput" type="text" value="PRODUCT STORY" aria-label="Kicker">
             <input id="headlineInput" type="text" value="Design, in perspective." aria-label="Headline">
@@ -318,9 +372,17 @@
       </aside>
 
       <section class="preview-shell">
-        <div class="preview-viewport" id="previewViewport">
-          <div class="preview-scale" id="previewScale">
-            <div class="export-frame" id="exportFrame">
+        <div class="preview-stage">
+          <div class="preview-toolbar">
+            <div class="segmented-control view-mode-control" id="viewModeButtons" aria-label="Editor view">
+              <button type="button" data-view-mode="focus" class="is-active">Focus</button>
+              <button type="button" data-view-mode="set">All panels</button>
+            </div>
+            <span id="viewModeHint">Editing the selected panel</span>
+          </div>
+          <div class="preview-viewport" id="previewViewport">
+            <div class="preview-scale" id="previewScale">
+              <div class="export-frame" id="exportFrame">
               <img class="scene-background-image" alt="" hidden>
               <div class="scene-background-overlay"></div>
               <div class="scene-glow"></div>
@@ -349,15 +411,38 @@
                   </div>
                 </div>
               </section>
+              </div>
+            </div>
+            <span class="preview-meta" id="previewMeta">1600 × 1600 · Custom</span>
+          </div>
+          <div class="set-overview" id="setOverview" hidden>
+            <div class="set-overview-canvas" id="setOverviewCanvas"></div>
+            <span class="overview-meta" id="overviewMeta">1 panel · click a panel to edit</span>
+          </div>
+        </div>
+        <section class="slide-dock" aria-label="Screenshot set">
+          <div class="slide-toolbar">
+            <div>
+              <span class="slide-toolbar-label">Screenshot set</span>
+              <span class="slide-count" id="slideCount">1 slide</span>
+            </div>
+            <div class="slide-actions">
+              <button type="button" id="addSlideButton">+ Add</button>
+              <button type="button" id="duplicateSlideButton">Duplicate</button>
+              <button type="button" id="renameSlideButton">Rename</button>
+              <button type="button" id="moveSlideLeftButton" aria-label="Move slide left">←</button>
+              <button type="button" id="moveSlideRightButton" aria-label="Move slide right">→</button>
+              <button type="button" id="deleteSlideButton" class="danger-button">Delete</button>
             </div>
           </div>
-          <span class="preview-meta" id="previewMeta">1600 × 1600 · Custom</span>
-        </div>
+          <div class="slide-strip" id="slideStrip" role="tablist" aria-label="Slides"></div>
+        </section>
         <div class="status-toast" id="statusToast" role="status"></div>
       </section>
     </main>
 
     <script src="/scene.js"></script>
+    <script src="/project.js"></script>
     <script src="/studio.js"></script>
   </body>
 </html>

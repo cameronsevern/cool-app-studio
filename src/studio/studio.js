@@ -3,6 +3,10 @@
   const previewViewport = document.getElementById('previewViewport');
   const previewScale = document.getElementById('previewScale');
   const previewMeta = document.getElementById('previewMeta');
+  const setOverview = document.getElementById('setOverview');
+  const setOverviewCanvas = document.getElementById('setOverviewCanvas');
+  const overviewMeta = document.getElementById('overviewMeta');
+  const viewModeHint = document.getElementById('viewModeHint');
   const sourceButton = document.getElementById('sourceButton');
   const sourceInput = document.getElementById('sourceInput');
   const sourceName = document.getElementById('sourceName');
@@ -13,27 +17,55 @@
   const fontFileInput = document.getElementById('fontFileInput');
   const fontFileName = document.getElementById('fontFileName');
   const exportButton = document.getElementById('exportButton');
+  const exportSetButton = document.getElementById('exportSetButton');
   const loadPresetButton = document.getElementById('loadPresetButton');
   const savePresetButton = document.getElementById('savePresetButton');
   const presetInput = document.getElementById('presetInput');
+  const projectOpenButton = document.getElementById('projectOpenButton');
+  const projectSaveButton = document.getElementById('projectSaveButton');
+  const projectInput = document.getElementById('projectInput');
+  const projectNameInput = document.getElementById('projectNameInput');
+  const undoButton = document.getElementById('undoButton');
+  const redoButton = document.getElementById('redoButton');
+  const slideStrip = document.getElementById('slideStrip');
+  const slideCount = document.getElementById('slideCount');
   const statusToast = document.getElementById('statusToast');
   const preflightStatus = document.getElementById('preflightStatus');
   const canvasDescription = document.getElementById('canvasDescription');
+  const spanDeviceInput = document.getElementById('spanDeviceInput');
+  const spanDeviceControls = document.getElementById('spanDeviceControls');
+  const spanDeviceHelp = document.getElementById('spanDeviceHelp');
+  const spanStartSelect = document.getElementById('spanStartSelect');
+  const spanEndSelect = document.getElementById('spanEndSelect');
+  const spanSourceSelect = document.getElementById('spanSourceSelect');
+  const spanX = document.getElementById('spanX');
+  const spanY = document.getElementById('spanY');
+  const spanScale = document.getElementById('spanScale');
 
-  const STORAGE_KEY = 'mockup-studio.config.v2';
-  const LEGACY_STORAGE_KEY = 'mockup-studio.config.v1';
+  const PROJECT_STORAGE_KEY = 'app-screenshot-forge.project.v4';
+  const PROJECT_STORAGE_KEYS = ['mockup-studio.project.v4', 'mockup-studio.project.v3'];
+  const CONFIG_STORAGE_KEYS = ['mockup-studio.config.v2', 'mockup-studio.config.v1'];
+  const HISTORY_LIMIT = 60;
 
+  let project;
   let config = MockupScene.normalizeConfig();
   let assets = {
     screenImageUrl: '',
     backgroundImageUrl: '',
     fontDataUrl: '',
+    screenshotFileName: '',
     backgroundFileName: '',
     fontFileName: '',
   };
-  let usingSample = true;
   let loadedFontFace;
+  let loadedFontDataUrl = '';
   let toastTimer;
+  let historyTimer;
+  let history = [];
+  let historyIndex = -1;
+  let historyEnabled = false;
+  let restoringHistory = false;
+  let viewMode = 'focus';
 
   const controls = {
     canvasPreset: document.getElementById('canvasPresetSelect'),
@@ -137,7 +169,7 @@
     window.clearTimeout(toastTimer);
     statusToast.textContent = message;
     statusToast.classList.add('is-visible');
-    toastTimer = window.setTimeout(() => statusToast.classList.remove('is-visible'), 3200);
+    toastTimer = window.setTimeout(() => statusToast.classList.remove('is-visible'), 3600);
   }
 
   function fileToDataUrl(file) {
@@ -158,31 +190,230 @@
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  function loadStoredConfig() {
-    for (const key of [STORAGE_KEY, LEGACY_STORAGE_KEY]) {
+  function currentSlide() {
+    return MockupProject.selectedSlide(project);
+  }
+
+  function assetById(id) {
+    return id ? project.assets[id] : null;
+  }
+
+  function currentScreenshotAsset() {
+    return assetById(currentSlide()?.screenshotAssetId);
+  }
+
+  function refreshAssets() {
+    const screenshot = currentScreenshotAsset();
+    const background = assetById(project.backgroundAssetId);
+    const font = assetById(project.fontAssetId);
+    assets = {
+      screenImageUrl: screenshot?.dataUrl ?? '',
+      backgroundImageUrl: background?.dataUrl ?? '',
+      fontDataUrl: font?.dataUrl ?? '',
+      screenshotFileName: screenshot?.name ?? '',
+      backgroundFileName: background?.name ?? '',
+      fontFileName: font?.name ?? '',
+    };
+  }
+
+  function syncProjectFromConfig() {
+    if (!project) return;
+    MockupProject.syncConfig(project, config, currentSlide());
+  }
+
+  function composeSelectedConfig() {
+    config = MockupProject.composeConfig(project, currentSlide());
+    refreshAssets();
+  }
+
+  function repairSpanDevice() {
+    project.spanDevice = MockupProject.normalizeSpanDevice(
+      project.spanDevice,
+      project.slides,
+      config,
+    );
+    return MockupProject.resolveSpanDevice(project);
+  }
+
+  function assetsForSlide(slide) {
+    return {
+      screenImageUrl: assetById(slide?.screenshotAssetId)?.dataUrl ?? '',
+      backgroundImageUrl: assetById(project.backgroundAssetId)?.dataUrl ?? '',
+      fontDataUrl: assetById(project.fontAssetId)?.dataUrl ?? '',
+    };
+  }
+
+  function cloneSceneFrame() {
+    const sceneFrame = frame.cloneNode(true);
+    sceneFrame.removeAttribute('id');
+    sceneFrame.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id'));
+    return sceneFrame;
+  }
+
+  function projectForStorage() {
+    syncProjectFromConfig();
+    return MockupProject.serialize(project, false);
+  }
+
+  function persistProject() {
+    try {
+      window.localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(projectForStorage()));
+      for (const key of PROJECT_STORAGE_KEYS) window.localStorage.removeItem(key);
+      for (const key of CONFIG_STORAGE_KEYS) window.localStorage.removeItem(key);
+    } catch (error) {
+      console.warn('Project autosave unavailable', error);
+    }
+  }
+
+  function loadStoredProject() {
+    try {
+      const storedProject = window.localStorage.getItem(PROJECT_STORAGE_KEY);
+      if (storedProject) {
+        return MockupProject.normalizeProject(
+          JSON.parse(storedProject),
+          MockupScene.DEFAULT_CONFIG,
+        );
+      }
+    } catch {
+      window.localStorage.removeItem(PROJECT_STORAGE_KEY);
+    }
+    for (const key of PROJECT_STORAGE_KEYS) {
       try {
-        const stored = window.localStorage.getItem(key);
-        if (stored) return MockupScene.normalizeConfig(JSON.parse(stored));
+        const storedProject = window.localStorage.getItem(key);
+        if (storedProject) {
+          return MockupProject.normalizeProject(
+            JSON.parse(storedProject),
+            MockupScene.DEFAULT_CONFIG,
+          );
+        }
       } catch {
         window.localStorage.removeItem(key);
       }
     }
-    return null;
+    for (const key of CONFIG_STORAGE_KEYS) {
+      try {
+        const storedConfig = window.localStorage.getItem(key);
+        if (storedConfig) {
+          return MockupProject.createFromConfig(JSON.parse(storedConfig));
+        }
+      } catch {
+        window.localStorage.removeItem(key);
+      }
+    }
+    return MockupProject.createFromConfig(MockupScene.DEFAULT_CONFIG);
   }
 
-  async function fetchSample(device) {
+  async function fetchSampleDataUrl(device) {
     const response = await fetch(`/sample/${device}`);
     if (!response.ok) throw new Error(`Sample unavailable: ${response.status}`);
-    const blob = await response.blob();
-    assets.screenImageUrl = await fileToDataUrl(blob);
-    sourceName.textContent = device === 'pixel' ? 'Demo · Pixel' : 'Demo · iPhone';
+    return fileToDataUrl(await response.blob());
+  }
+
+  async function ensureSampleAsset(device) {
+    const expectedName = device === 'pixel' ? 'Demo · Pixel' : 'Demo · iPhone';
+    const existing = Object.values(project.assets).find(
+      (asset) => asset.isSample && asset.name === expectedName,
+    );
+    if (existing) {
+      if (!existing.dataUrl) existing.dataUrl = await fetchSampleDataUrl(device);
+      return existing.id;
+    }
+    return MockupProject.createAsset(project, {
+      name: expectedName,
+      type: 'image',
+      isSample: true,
+      dataUrl: await fetchSampleDataUrl(device),
+    });
+  }
+
+  async function hydrateSampleAssets() {
+    for (const asset of Object.values(project.assets)) {
+      if (!asset.isSample || asset.dataUrl) continue;
+      const device = asset.name.includes('Pixel') ? 'pixel' : 'iphone';
+      asset.dataUrl = await fetchSampleDataUrl(device);
+    }
+    const slide = currentSlide();
+    if (slide && !slide.screenshotAssetId) {
+      slide.screenshotAssetId = await ensureSampleAsset(config.device);
+    }
+    refreshAssets();
   }
 
   async function loadCustomFont(dataUrl) {
+    if (!dataUrl || loadedFontDataUrl === dataUrl) return;
     if (loadedFontFace) document.fonts.delete(loadedFontFace);
     const font = new FontFace(config.customFontName, `url(${dataUrl})`);
     loadedFontFace = await font.load();
+    loadedFontDataUrl = dataUrl;
     document.fonts.add(loadedFontFace);
+  }
+
+  async function applyProjectFont() {
+    refreshAssets();
+    if (config.fontFamily === 'custom' && assets.fontDataUrl) {
+      await loadCustomFont(assets.fontDataUrl);
+      return;
+    }
+    if (loadedFontFace) document.fonts.delete(loadedFontFace);
+    loadedFontFace = undefined;
+    loadedFontDataUrl = '';
+  }
+
+  function updateHistoryButtons() {
+    undoButton.disabled = historyIndex <= 0;
+    redoButton.disabled = historyIndex < 0 || historyIndex >= history.length - 1;
+  }
+
+  function recordHistoryNow() {
+    if (!historyEnabled || restoringHistory) return;
+    window.clearTimeout(historyTimer);
+    syncProjectFromConfig();
+    const state = MockupProject.historyState(project);
+    if (history[historyIndex] === state) return;
+    history = history.slice(0, historyIndex + 1);
+    history.push(state);
+    if (history.length > HISTORY_LIMIT) history.shift();
+    historyIndex = history.length - 1;
+    updateHistoryButtons();
+  }
+
+  function scheduleHistory() {
+    if (!historyEnabled || restoringHistory) return;
+    window.clearTimeout(historyTimer);
+    historyTimer = window.setTimeout(recordHistoryNow, 320);
+  }
+
+  function resetHistory() {
+    window.clearTimeout(historyTimer);
+    syncProjectFromConfig();
+    history = [MockupProject.historyState(project)];
+    historyIndex = 0;
+    historyEnabled = true;
+    updateHistoryButtons();
+  }
+
+  async function restoreHistoryIndex(nextIndex) {
+    if (nextIndex < 0 || nextIndex >= history.length) return;
+    window.clearTimeout(historyTimer);
+    restoringHistory = true;
+    historyIndex = nextIndex;
+    project = MockupProject.restoreHistory(project, history[historyIndex]);
+    composeSelectedConfig();
+    await applyProjectFont();
+    updateControlValues();
+    updatePreview({ record: false });
+    restoringHistory = false;
+    updateHistoryButtons();
+  }
+
+  function undo() {
+    recordHistoryNow();
+    return restoreHistoryIndex(historyIndex - 1);
+  }
+
+  function redo() {
+    recordHistoryNow();
+    return restoreHistoryIndex(historyIndex + 1);
   }
 
   function updateValueLabels() {
@@ -209,6 +440,44 @@
     valueLabels.copyWidth.textContent = `${Math.round(config.copyWidth * 100)}%`;
     valueLabels.copyTop.textContent = `${Math.round(config.copyTop * 100)}%`;
     valueLabels.copyLeft.textContent = `${Math.round(config.copyLeft * 100)}%`;
+    document.getElementById('spanXValue').textContent = `${Math.round(project.spanDevice.x * 100)}%`;
+    document.getElementById('spanYValue').textContent = `${Math.round(project.spanDevice.y * 100)}%`;
+    document.getElementById('spanScaleValue').textContent = `${Math.round(project.spanDevice.scale * 100)}%`;
+  }
+
+  function replaceSelectOptions(select, slides, selectedId, indexOffset = 0) {
+    select.replaceChildren();
+    for (const [index, slide] of slides.entries()) {
+      const option = document.createElement('option');
+      option.value = slide.id;
+      option.textContent = `${index + indexOffset + 1} · ${slide.name}`;
+      option.selected = slide.id === selectedId;
+      select.append(option);
+    }
+  }
+
+  function updateSpanControls() {
+    const span = repairSpanDevice();
+    const canSpan = project.slides.length > 1;
+    spanDeviceInput.disabled = !canSpan;
+    spanDeviceInput.checked = Boolean(span);
+    spanDeviceControls.hidden = !span;
+    replaceSelectOptions(spanStartSelect, project.slides, project.spanDevice.startSlideId);
+    replaceSelectOptions(spanEndSelect, project.slides, project.spanDevice.endSlideId);
+    const startIndex = project.slides.findIndex((slide) => slide.id === project.spanDevice.startSlideId);
+    const endIndex = project.slides.findIndex((slide) => slide.id === project.spanDevice.endSlideId);
+    const rangeSlides = project.slides.slice(Math.max(0, startIndex), endIndex + 1);
+    replaceSelectOptions(spanSourceSelect, rangeSlides, project.spanDevice.sourceSlideId, Math.max(0, startIndex));
+    spanX.value = project.spanDevice.x;
+    spanY.value = project.spanDevice.y;
+    spanScale.value = project.spanDevice.scale;
+    if (!canSpan) {
+      spanDeviceHelp.textContent = 'Add at least two panels to create a continuous device.';
+    } else if (span) {
+      spanDeviceHelp.textContent = `One device crosses panels ${span.startIndex + 1}–${span.endIndex + 1}. Set view and export use one continuous render.`;
+    } else {
+      spanDeviceHelp.textContent = 'Enable this to render one device once, then crop it cleanly across adjacent panels.';
+    }
   }
 
   function updateConditionalControls() {
@@ -231,6 +500,7 @@
   }
 
   function updateControlValues() {
+    refreshAssets();
     for (const key of numericKeys) controls[key].value = config[key];
     controls.canvasPreset.value = config.canvasPreset;
     controls.device.value = config.device;
@@ -252,12 +522,19 @@
     controls.subhead.value = config.subhead;
     controls.width.value = config.width;
     controls.height.value = config.height;
+    projectNameInput.value = project.name;
+
+    const screenshot = currentScreenshotAsset();
+    sourceName.textContent = screenshot
+      ? `${screenshot.name}${screenshot.dataUrl ? '' : ' · reselect'}`
+      : 'No screenshot selected';
     backgroundImageName.textContent = assets.backgroundFileName
       ? `${assets.backgroundFileName}${assets.backgroundImageUrl ? '' : ' · reselect'}`
       : 'No image selected';
     fontFileName.textContent = assets.fontFileName
       ? `${assets.fontFileName}${assets.fontDataUrl ? '' : ' · reselect'}`
       : 'No font selected';
+
     document.querySelectorAll('[data-preset]').forEach((button) => {
       button.classList.toggle('is-active', button.dataset.preset === config.preset);
     });
@@ -266,8 +543,69 @@
     });
     const canvas = MockupScene.CANVAS_PRESETS[config.canvasPreset];
     canvasDescription.textContent = canvas?.description ?? 'Custom canvas dimensions.';
+    updateSpanControls();
     updateConditionalControls();
     updateValueLabels();
+  }
+
+  function renderSlideStrip() {
+    slideStrip.replaceChildren();
+    const span = repairSpanDevice();
+    for (const [index, slide] of project.slides.entries()) {
+      const slideConfig = MockupProject.composeConfig(project, slide);
+      const isSpanned = span && index >= span.startIndex && index <= span.endIndex;
+      const screenshot = isSpanned
+        ? assetById(project.slides[span.sourceIndex].screenshotAssetId)
+        : assetById(slide.screenshotAssetId);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'slide-card';
+      button.dataset.slideId = slide.id;
+      button.setAttribute('role', 'tab');
+      button.setAttribute('aria-selected', String(slide.id === project.selectedSlideId));
+      button.setAttribute('aria-label', `${index + 1}. ${slide.name}`);
+      button.classList.toggle('is-active', slide.id === project.selectedSlideId);
+      button.classList.toggle('is-missing', !screenshot?.dataUrl);
+
+      if (screenshot?.dataUrl) {
+        const image = document.createElement('img');
+        image.className = 'slide-card-image';
+        image.src = screenshot.dataUrl;
+        image.alt = '';
+        button.append(image);
+      }
+      const number = document.createElement('span');
+      number.className = 'slide-card-index';
+      number.textContent = String(index + 1);
+      if (isSpanned) {
+        const spanLabel = document.createElement('span');
+        spanLabel.className = 'slide-card-span';
+        spanLabel.textContent = 'Span';
+        button.append(spanLabel);
+      }
+      const copy = document.createElement('span');
+      copy.className = 'slide-card-copy';
+      const name = document.createElement('span');
+      name.className = 'slide-card-name';
+      name.textContent = slide.name;
+      const headline = document.createElement('span');
+      headline.className = 'slide-card-headline';
+      headline.textContent = screenshot?.dataUrl
+        ? (slideConfig.headline || 'Untitled composition')
+        : 'Screenshot needs reselecting';
+      copy.append(name, headline);
+      button.append(number, copy);
+      slideStrip.append(button);
+    }
+
+    const count = project.slides.length;
+    slideCount.textContent = `${count} slide${count === 1 ? '' : 's'}`;
+    const selectedIndex = project.slides.findIndex((slide) => slide.id === project.selectedSlideId);
+    document.getElementById('deleteSlideButton').disabled = count <= 1;
+    document.getElementById('addSlideButton').disabled = count >= 10;
+    document.getElementById('duplicateSlideButton').disabled = count >= 10;
+    document.getElementById('moveSlideLeftButton').disabled = selectedIndex <= 0;
+    document.getElementById('moveSlideRightButton').disabled = selectedIndex < 0 || selectedIndex >= count - 1;
   }
 
   function fitPreview() {
@@ -282,33 +620,191 @@
     previewScale.style.transform = `scale(${scale})`;
   }
 
+  function fitSetOverview() {
+    if (setOverview.hidden || project.slides.length === 0) return;
+    const totalWidth = config.width * project.slides.length;
+    const scale = Math.min(
+      setOverview.clientWidth / totalWidth,
+      setOverview.clientHeight / config.height,
+    ) * 0.92;
+    setOverviewCanvas.style.left = `${(setOverview.clientWidth - totalWidth * scale) / 2}px`;
+    setOverviewCanvas.style.top = `${(setOverview.clientHeight - config.height * scale) / 2}px`;
+    setOverviewCanvas.style.transform = `scale(${scale})`;
+  }
+
+  function focusSceneState() {
+    const span = repairSpanDevice();
+    const selectedIndex = project.slides.indexOf(currentSlide());
+    if (!span || selectedIndex < span.startIndex || selectedIndex > span.endIndex) {
+      return { sceneConfig: config, sceneAssets: assets, isSpanCrop: false };
+    }
+    const sourceSlide = project.slides[span.sourceIndex];
+    const panelOffset = selectedIndex - span.startIndex;
+    const spanCount = span.endIndex - span.startIndex + 1;
+    return {
+      sceneConfig: {
+        ...config,
+        preset: 'custom',
+        showDevice: true,
+        x: span.x * spanCount - panelOffset - 0.5,
+        y: span.y,
+        scale: span.scale,
+        rotateX: span.rotateX,
+        rotateY: span.rotateY,
+        rotateZ: span.rotateZ,
+      },
+      sceneAssets: {
+        ...assets,
+        screenImageUrl: assetById(sourceSlide.screenshotAssetId)?.dataUrl ?? '',
+      },
+      isSpanCrop: true,
+    };
+  }
+
+  function renderSetOverview() {
+    if (viewMode !== 'set') return;
+    const width = Number(config.width);
+    const height = Number(config.height);
+    const totalWidth = width * project.slides.length;
+    const span = repairSpanDevice();
+    setOverviewCanvas.replaceChildren();
+    setOverviewCanvas.style.width = `${totalWidth}px`;
+    setOverviewCanvas.style.height = `${height}px`;
+
+    for (const [index, slide] of project.slides.entries()) {
+      const panel = document.createElement('div');
+      panel.className = 'overview-panel';
+      panel.style.left = `${index * width}px`;
+      panel.style.width = `${width}px`;
+      const panelFrame = cloneSceneFrame();
+      const isSpanned = span && index >= span.startIndex && index <= span.endIndex;
+      MockupScene.applyScene(
+        panelFrame,
+        { ...MockupProject.composeConfig(project, slide), ...(isSpanned ? { showDevice: false } : {}) },
+        assetsForSlide(slide),
+      );
+      panel.append(panelFrame);
+      setOverviewCanvas.append(panel);
+    }
+
+    if (span) {
+      const sourceSlide = project.slides[span.sourceIndex];
+      const sourceConfig = MockupProject.composeConfig(project, sourceSlide);
+      const spanCount = span.endIndex - span.startIndex + 1;
+      const spanWidth = spanCount * width;
+      const overlay = cloneSceneFrame();
+      overlay.classList.add('overview-span-layer');
+      MockupScene.applyScene(
+        overlay,
+        {
+          ...sourceConfig,
+          width,
+          height,
+          background: 'transparent',
+          showDevice: true,
+          preset: 'custom',
+          x: 0,
+          y: span.y,
+          scale: span.scale,
+          rotateX: span.rotateX,
+          rotateY: span.rotateY,
+          rotateZ: span.rotateZ,
+        },
+        assetsForSlide(sourceSlide),
+      );
+      overlay.style.left = `${span.startIndex * width}px`;
+      overlay.style.width = `${spanWidth}px`;
+      overlay.style.height = `${height}px`;
+      overlay.style.setProperty('--translate-x', `${(span.x - 0.5) * spanWidth}px`);
+      setOverviewCanvas.append(overlay);
+    }
+
+    for (const [index, slide] of project.slides.entries()) {
+      const hit = document.createElement('button');
+      hit.type = 'button';
+      hit.className = 'overview-panel-hit';
+      hit.classList.toggle('is-active', slide.id === project.selectedSlideId);
+      hit.dataset.slideId = slide.id;
+      hit.style.left = `${index * width}px`;
+      hit.style.width = `${width}px`;
+      hit.setAttribute('aria-label', `Edit panel ${index + 1}: ${slide.name}`);
+      const number = document.createElement('span');
+      number.className = 'overview-panel-number';
+      number.textContent = String(index + 1);
+      hit.append(number);
+      setOverviewCanvas.append(hit);
+    }
+
+    const spanLabel = span
+      ? ` · device spans ${span.startIndex + 1}–${span.endIndex + 1}`
+      : '';
+    overviewMeta.textContent = `${project.slides.length} panel${project.slides.length === 1 ? '' : 's'}${spanLabel} · click a panel to edit`;
+    fitSetOverview();
+  }
+
+  function setViewMode(nextMode) {
+    viewMode = nextMode === 'set' ? 'set' : 'focus';
+    previewViewport.hidden = viewMode === 'set';
+    setOverview.hidden = viewMode !== 'set';
+    document.querySelectorAll('[data-view-mode]').forEach((button) => {
+      button.classList.toggle('is-active', button.dataset.viewMode === viewMode);
+    });
+    viewModeHint.textContent = viewMode === 'set'
+      ? 'Exact set canvas · panel lines are export crop boundaries'
+      : 'Editing the selected panel';
+    if (viewMode === 'set') renderSetOverview();
+    else fitPreview();
+  }
+
   function updatePreflight() {
     const target = MockupScene.CANVAS_PRESETS[config.canvasPreset];
     const warnings = [];
     if (target?.platform === 'google' && config.background === 'transparent') {
       warnings.push('Google Play PNGs cannot contain transparency');
     }
+    const span = repairSpanDevice();
+    const selectedIndex = project.slides.indexOf(currentSlide());
+    const selectedUsesSpan = span && selectedIndex >= span.startIndex && selectedIndex <= span.endIndex;
+    if (selectedUsesSpan) {
+      if (!assetById(project.slides[span.sourceIndex].screenshotAssetId)?.dataUrl) {
+        warnings.push('reselect the spanning device source screenshot');
+      }
+    } else if (!assets.screenImageUrl) {
+      warnings.push('reselect this slide’s screenshot');
+    }
     if (config.background === 'image' && !assets.backgroundImageUrl) {
-      warnings.push('reselect a local background image');
+      warnings.push('reselect the shared background image');
     }
     if (config.fontFamily === 'custom' && !assets.fontDataUrl) {
-      warnings.push('reselect a local font file');
+      warnings.push('reselect the shared font file');
+    }
+    const missingScreens = project.slides.filter((slide, index) => {
+      if (span && index >= span.startIndex && index <= span.endIndex) return false;
+      return !assetById(slide.screenshotAssetId)?.dataUrl;
+    }).length;
+    if (missingScreens > 0 && (selectedUsesSpan || assets.screenImageUrl)) {
+      warnings.push(`${missingScreens} other slide${missingScreens === 1 ? '' : 's'} need screenshots`);
     }
     const label = target?.label ?? 'Custom canvas';
     previewMeta.textContent = `${config.width} × ${config.height} · ${label}`;
     preflightStatus.textContent = warnings.length
       ? `${label} · ${warnings.join('; ')}.`
-      : `${label} · exact ${config.width} × ${config.height} · ready to export.`;
+      : `${label} · ${project.slides.length}-slide set ready to export.`;
     preflightStatus.classList.toggle('is-warning', warnings.length > 0);
   }
 
-  function updatePreview() {
-    MockupScene.applyScene(frame, config, assets);
+  function updatePreview({ record = true } = {}) {
+    syncProjectFromConfig();
+    refreshAssets();
+    const focusState = focusSceneState();
+    MockupScene.applyScene(frame, focusState.sceneConfig, focusState.sceneAssets);
     fitPreview();
+    renderSetOverview();
     updateValueLabels();
     updatePreflight();
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
-    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+    renderSlideStrip();
+    persistProject();
+    if (record) scheduleHistory();
   }
 
   function setNumber(key, value, affectsCamera = false) {
@@ -322,6 +818,379 @@
     }
     updatePreview();
   }
+
+  async function selectSlide(slideId, { record = true } = {}) {
+    if (!project.slides.some((slide) => slide.id === slideId)) return;
+    syncProjectFromConfig();
+    project.selectedSlideId = slideId;
+    composeSelectedConfig();
+    await applyProjectFont();
+    updateControlValues();
+    updatePreview({ record: false });
+    slideStrip.querySelector(`[data-slide-id="${slideId}"]`)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'nearest',
+      inline: 'nearest',
+    });
+    if (record) recordHistoryNow();
+  }
+
+  async function addSlide() {
+    if (project.slides.length >= 10) return;
+    syncProjectFromConfig();
+    const defaults = MockupProject.createFromConfig(MockupScene.DEFAULT_CONFIG).slides[0].config;
+    const slideId = MockupProject.createId('slide');
+    const slide = {
+      id: slideId,
+      name: `Slide ${project.slides.length + 1}`,
+      config: defaults,
+      screenshotAssetId: await ensureSampleAsset(config.device),
+    };
+    project.slides.push(slide);
+    project.selectedSlideId = slideId;
+    composeSelectedConfig();
+    updateControlValues();
+    updatePreview({ record: false });
+    recordHistoryNow();
+    showStatus('Slide added');
+  }
+
+  function duplicateSlide() {
+    if (project.slides.length >= 10) return;
+    syncProjectFromConfig();
+    const source = currentSlide();
+    const sourceIndex = project.slides.indexOf(source);
+    const copy = {
+      id: MockupProject.createId('slide'),
+      name: `${source.name} copy`,
+      config: { ...source.config },
+      screenshotAssetId: source.screenshotAssetId,
+    };
+    project.slides.splice(sourceIndex + 1, 0, copy);
+    project.selectedSlideId = copy.id;
+    composeSelectedConfig();
+    updateControlValues();
+    updatePreview({ record: false });
+    recordHistoryNow();
+    showStatus('Slide duplicated');
+  }
+
+  function renameSlide() {
+    const slide = currentSlide();
+    const name = window.prompt('Slide name', slide.name)?.trim();
+    if (!name || name === slide.name) return;
+    slide.name = name;
+    updatePreview({ record: false });
+    recordHistoryNow();
+  }
+
+  function deleteSlide() {
+    if (project.slides.length <= 1) return;
+    const slide = currentSlide();
+    if (!window.confirm(`Delete “${slide.name}”?`)) return;
+    const index = project.slides.indexOf(slide);
+    project.slides.splice(index, 1);
+    project.selectedSlideId = project.slides[Math.min(index, project.slides.length - 1)].id;
+    composeSelectedConfig();
+    updateControlValues();
+    updatePreview({ record: false });
+    recordHistoryNow();
+    showStatus('Slide deleted');
+  }
+
+  function moveSlide(direction) {
+    syncProjectFromConfig();
+    const slide = currentSlide();
+    const index = project.slides.indexOf(slide);
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= project.slides.length) return;
+    [project.slides[index], project.slides[nextIndex]] = [
+      project.slides[nextIndex],
+      project.slides[index],
+    ];
+    updatePreview({ record: false });
+    recordHistoryNow();
+  }
+
+  async function newProject() {
+    if (!window.confirm('Start a new screenshot set? Unsaved project changes will be replaced.')) return;
+    project = MockupProject.createFromConfig(MockupScene.DEFAULT_CONFIG);
+    config = MockupProject.composeConfig(project);
+    currentSlide().screenshotAssetId = await ensureSampleAsset(config.device);
+    refreshAssets();
+    await applyProjectFont();
+    updateControlValues();
+    updatePreview({ record: false });
+    resetHistory();
+    showStatus('New screenshot set created');
+  }
+
+  function saveProject() {
+    syncProjectFromConfig();
+    const payload = MockupProject.serialize(project, true);
+    payload.savedAt = new Date().toISOString();
+    payload.localOnly = true;
+    downloadBlob(
+      new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }),
+      `${MockupProject.safeFilename(project.name)}.screenshot-forge`,
+    );
+    showStatus(`Project saved with ${Object.keys(payload.project.assets).length} local assets`);
+  }
+
+  async function openProjectFile(file) {
+    const parsed = JSON.parse(await file.text());
+    project = MockupProject.normalizeProject(parsed, MockupScene.DEFAULT_CONFIG);
+    config = MockupProject.composeConfig(project);
+    await hydrateSampleAssets();
+    composeSelectedConfig();
+    await applyProjectFont();
+    updateControlValues();
+    updatePreview({ record: false });
+    resetHistory();
+    showStatus(`Opened ${file.name}`);
+  }
+
+  function createBatchPayload() {
+    const assetData = Object.fromEntries(
+      Object.entries(project.assets)
+        .filter(([, asset]) => asset.dataUrl)
+        .map(([id, asset]) => [id, asset.dataUrl]),
+    );
+    const items = project.slides.map((slide, index) => {
+      const slideConfig = MockupProject.composeConfig(project, slide);
+      return {
+        filename: `${String(index + 1).padStart(2, '0')}-${MockupProject.safeFilename(slide.name)}-${slideConfig.width}x${slideConfig.height}.png`,
+        config: slideConfig,
+        screenshotAssetId: slide.screenshotAssetId,
+        backgroundAssetId: project.backgroundAssetId,
+        fontAssetId: project.fontAssetId,
+      };
+    });
+    const span = repairSpanDevice();
+    return {
+      items,
+      assets: assetData,
+      ...(span ? {
+        spanDevice: {
+          enabled: true,
+          startIndex: span.startIndex,
+          endIndex: span.endIndex,
+          sourceIndex: span.sourceIndex,
+          x: span.x,
+          y: span.y,
+          scale: span.scale,
+          rotateX: span.rotateX,
+          rotateY: span.rotateY,
+          rotateZ: span.rotateZ,
+        },
+      } : {}),
+    };
+  }
+
+  function validateExportAssets(allSlides = true) {
+    const missing = [];
+    const span = repairSpanDevice();
+    const selectedIndex = project.slides.indexOf(currentSlide());
+    const indices = allSlides
+      ? project.slides.map((_, index) => index)
+      : [selectedIndex];
+    const usesSpan = span && indices.some((index) => index >= span.startIndex && index <= span.endIndex);
+    if (usesSpan && !assetById(project.slides[span.sourceIndex].screenshotAssetId)?.dataUrl) {
+      missing.push(`spanning source “${project.slides[span.sourceIndex].name}”`);
+    }
+    for (const index of indices) {
+      if (span && index >= span.startIndex && index <= span.endIndex) continue;
+      const slide = project.slides[index];
+      if (!assetById(slide.screenshotAssetId)?.dataUrl) missing.push(`“${slide.name}”`);
+    }
+    if (missing.length > 0) {
+      throw new Error(`Reselect screenshots for ${missing.join(', ')}`);
+    }
+    if (config.background === 'image' && !assetById(project.backgroundAssetId)?.dataUrl) {
+      throw new Error('Reselect the shared background image');
+    }
+    if (config.fontFamily === 'custom' && !assetById(project.fontAssetId)?.dataUrl) {
+      throw new Error('Reselect the shared font file');
+    }
+  }
+
+  async function exportCurrentSlide() {
+    syncProjectFromConfig();
+    validateExportAssets(false);
+    exportButton.disabled = true;
+    exportButton.textContent = 'Rendering…';
+    try {
+      const span = repairSpanDevice();
+      const selectedIndex = project.slides.indexOf(currentSlide());
+      const isSpanned = span && selectedIndex >= span.startIndex && selectedIndex <= span.endIndex;
+      const endpoint = isSpanned ? '/api/render-batch' : '/api/render';
+      let payload = { config, assets };
+      if (isSpanned) {
+        const batch = createBatchPayload();
+        payload = {
+          ...batch,
+          items: batch.items.slice(span.startIndex, span.endIndex + 1),
+          spanDevice: {
+            ...batch.spanDevice,
+            startIndex: 0,
+            endIndex: span.endIndex - span.startIndex,
+            sourceIndex: span.sourceIndex - span.startIndex,
+          },
+          outputIndex: selectedIndex - span.startIndex,
+        };
+      }
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const blob = await response.blob();
+      const index = project.slides.indexOf(currentSlide()) + 1;
+      const target = config.canvasPreset === 'custom' ? 'custom' : config.canvasPreset;
+      const filename = `${String(index).padStart(2, '0')}-${MockupProject.safeFilename(currentSlide().name)}-${target}-${config.width}x${config.height}.png`;
+      downloadBlob(blob, filename);
+      showStatus('PNG rendered locally');
+    } catch (error) {
+      console.error(error);
+      showStatus(`Export failed: ${error.message}`);
+    } finally {
+      exportButton.disabled = false;
+      exportButton.textContent = 'Export PNG';
+    }
+  }
+
+  async function exportProjectSet() {
+    syncProjectFromConfig();
+    try {
+      validateExportAssets();
+    } catch (error) {
+      showStatus(`Set export blocked: ${error.message}`);
+      return;
+    }
+
+    exportSetButton.disabled = true;
+    exportSetButton.textContent = `Rendering ${project.slides.length}…`;
+    try {
+      const response = await fetch('/api/render-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(createBatchPayload()),
+      });
+      if (!response.ok) throw new Error(await response.text());
+      downloadBlob(
+        await response.blob(),
+        `${MockupProject.safeFilename(project.name)}-${config.canvasPreset}.zip`,
+      );
+      showStatus(`${project.slides.length}-slide set rendered locally`);
+    } catch (error) {
+      console.error(error);
+      showStatus(`Set export failed: ${error.message}`);
+    } finally {
+      exportSetButton.disabled = false;
+      exportSetButton.textContent = 'Export set';
+    }
+  }
+
+  function updateSpanRange(changedKey, slideId) {
+    let startIndex = project.slides.findIndex((slide) => slide.id === project.spanDevice.startSlideId);
+    let endIndex = project.slides.findIndex((slide) => slide.id === project.spanDevice.endSlideId);
+    const changedIndex = project.slides.findIndex((slide) => slide.id === slideId);
+    if (changedKey === 'start') startIndex = changedIndex;
+    else endIndex = changedIndex;
+    if (startIndex >= endIndex) {
+      if (changedKey === 'start') {
+        startIndex = Math.min(startIndex, project.slides.length - 2);
+        endIndex = startIndex + 1;
+      } else {
+        endIndex = Math.max(1, endIndex);
+        startIndex = endIndex - 1;
+      }
+    }
+    if (endIndex - startIndex > 4) {
+      if (changedKey === 'start') endIndex = startIndex + 4;
+      else startIndex = endIndex - 4;
+    }
+    const sourceIndex = project.slides.findIndex(
+      (slide) => slide.id === project.spanDevice.sourceSlideId,
+    );
+    project.spanDevice = {
+      ...project.spanDevice,
+      startSlideId: project.slides[startIndex].id,
+      endSlideId: project.slides[endIndex].id,
+      sourceSlideId: sourceIndex >= startIndex && sourceIndex <= endIndex
+        ? project.spanDevice.sourceSlideId
+        : project.slides[startIndex].id,
+    };
+    updateControlValues();
+    updatePreview();
+  }
+
+  document.getElementById('viewModeButtons').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-view-mode]');
+    if (button) setViewMode(button.dataset.viewMode);
+  });
+
+  setOverview.addEventListener('click', (event) => {
+    const panel = event.target.closest('[data-slide-id]');
+    if (panel) selectSlide(panel.dataset.slideId);
+  });
+
+  spanDeviceInput.addEventListener('change', () => {
+    syncProjectFromConfig();
+    if (spanDeviceInput.checked && project.slides.length > 1) {
+      const selectedIndex = project.slides.indexOf(currentSlide());
+      const startIndex = Math.min(selectedIndex, project.slides.length - 2);
+      const endIndex = startIndex + 1;
+      project.spanDevice = MockupProject.normalizeSpanDevice(
+        {
+          ...project.spanDevice,
+          enabled: true,
+          startSlideId: project.slides[startIndex].id,
+          endSlideId: project.slides[endIndex].id,
+          sourceSlideId: currentSlide().id,
+          x: 0.5,
+          y: config.y,
+          scale: Math.max(1, config.scale),
+          rotateX: config.rotateX,
+          rotateY: config.rotateY,
+          rotateZ: config.rotateZ,
+        },
+        project.slides,
+        config,
+      );
+      setViewMode('set');
+      showStatus(`Device now spans panels ${startIndex + 1}–${endIndex + 1}`);
+    } else {
+      project.spanDevice = { ...project.spanDevice, enabled: false };
+      showStatus('Spanning device disabled');
+    }
+    updateControlValues();
+    updatePreview();
+  });
+
+  spanStartSelect.addEventListener('change', () => updateSpanRange('start', spanStartSelect.value));
+  spanEndSelect.addEventListener('change', () => updateSpanRange('end', spanEndSelect.value));
+  spanSourceSelect.addEventListener('change', () => {
+    project.spanDevice = { ...project.spanDevice, sourceSlideId: spanSourceSelect.value };
+    updatePreview();
+  });
+  for (const [element, key] of [[spanX, 'x'], [spanY, 'y'], [spanScale, 'scale']]) {
+    element.addEventListener('input', () => {
+      project.spanDevice = { ...project.spanDevice, [key]: Number(element.value) };
+      updatePreview();
+    });
+  }
+  document.getElementById('spanUseSelectedButton').addEventListener('click', () => {
+    project.spanDevice = {
+      ...project.spanDevice,
+      rotateX: config.rotateX,
+      rotateY: config.rotateY,
+      rotateZ: config.rotateZ,
+    };
+    updatePreview();
+    showStatus(`Spanning device uses ${currentSlide().name}’s 3D angle`);
+  });
 
   for (const key of ['rotateX', 'rotateY', 'rotateZ', 'scale', 'x', 'y']) {
     controls[key].addEventListener('input', (event) => setNumber(key, event.target.value, true));
@@ -361,11 +1230,9 @@
   }
 
   controls.canvasPreset.addEventListener('change', (event) => {
-    if (event.target.value === 'custom') {
-      config = { ...config, canvasPreset: 'custom' };
-    } else {
-      config = MockupScene.applyCanvasPreset(config, event.target.value, config.orientation);
-    }
+    config = event.target.value === 'custom'
+      ? { ...config, canvasPreset: 'custom' }
+      : MockupScene.applyCanvasPreset(config, event.target.value, config.orientation);
     updateControlValues();
     updatePreview();
   });
@@ -376,11 +1243,9 @@
     const orientation = button.dataset.orientation;
     if (config.canvasPreset === 'custom') {
       const isLandscape = config.width > config.height;
-      if ((orientation === 'landscape') !== isLandscape) {
-        config = { ...config, width: config.height, height: config.width, orientation };
-      } else {
-        config = { ...config, orientation };
-      }
+      config = (orientation === 'landscape') !== isLandscape
+        ? { ...config, width: config.height, height: config.width, orientation }
+        : { ...config, orientation };
     } else {
       config = MockupScene.applyCanvasPreset(config, config.canvasPreset, orientation);
     }
@@ -392,7 +1257,7 @@
     config = MockupScene.fitComposition(config);
     updateControlValues();
     updatePreview();
-    showStatus('Composition fit to the current canvas');
+    showStatus('This slide was fit to the shared canvas');
   });
 
   controls.background.addEventListener('change', (event) => {
@@ -406,8 +1271,9 @@
     updatePreview();
   });
 
-  controls.fontFamily.addEventListener('change', (event) => {
+  controls.fontFamily.addEventListener('change', async (event) => {
     config = { ...config, fontFamily: event.target.value };
+    await applyProjectFont();
     updateControlValues();
     updatePreview();
   });
@@ -425,7 +1291,13 @@
 
   controls.device.addEventListener('change', async (event) => {
     config = { ...config, device: event.target.value };
-    if (usingSample) await fetchSample(config.device);
+    const sampleAssetId = await ensureSampleAsset(config.device);
+    for (const slide of project.slides) {
+      if (assetById(slide.screenshotAssetId)?.isSample) {
+        slide.screenshotAssetId = sampleAssetId;
+      }
+    }
+    updateControlValues();
     updatePreview();
   });
 
@@ -463,10 +1335,14 @@
     const [file] = sourceInput.files;
     if (!file) return;
     try {
-      assets.screenImageUrl = await fileToDataUrl(file);
-      usingSample = false;
-      sourceName.textContent = file.name;
+      currentSlide().screenshotAssetId = MockupProject.createAsset(project, {
+        name: file.name,
+        type: 'image',
+        dataUrl: await fileToDataUrl(file),
+      });
+      updateControlValues();
       updatePreview();
+      showStatus(`Screenshot selected for ${currentSlide().name}`);
     } catch (error) {
       showStatus(`Screenshot failed: ${error.message}`);
     } finally {
@@ -479,12 +1355,15 @@
     const [file] = backgroundImageInput.files;
     if (!file) return;
     try {
-      assets.backgroundImageUrl = await fileToDataUrl(file);
-      assets.backgroundFileName = file.name;
+      project.backgroundAssetId = MockupProject.createAsset(project, {
+        name: file.name,
+        type: 'image',
+        dataUrl: await fileToDataUrl(file),
+      });
       config = { ...config, background: 'image' };
       updateControlValues();
       updatePreview();
-      showStatus('Local background selected');
+      showStatus('Shared background selected');
     } catch (error) {
       showStatus(`Background failed: ${error.message}`);
     } finally {
@@ -493,8 +1372,7 @@
   });
 
   document.getElementById('removeBackgroundImageButton').addEventListener('click', () => {
-    assets.backgroundImageUrl = '';
-    assets.backgroundFileName = '';
+    project.backgroundAssetId = null;
     updateControlValues();
     updatePreview();
   });
@@ -505,13 +1383,16 @@
     if (!file) return;
     try {
       const dataUrl = await fileToDataUrl(file);
-      await loadCustomFont(dataUrl);
-      assets.fontDataUrl = dataUrl;
-      assets.fontFileName = file.name;
+      project.fontAssetId = MockupProject.createAsset(project, {
+        name: file.name,
+        type: 'font',
+        dataUrl,
+      });
       config = { ...config, fontFamily: 'custom' };
+      await loadCustomFont(dataUrl);
       updateControlValues();
       updatePreview();
-      showStatus('Local font loaded');
+      showStatus('Shared local font loaded');
     } catch (error) {
       console.error(error);
       showStatus(`Font failed: ${error.message}`);
@@ -522,28 +1403,18 @@
 
   document.getElementById('resetBackgroundButton').addEventListener('click', () => {
     const defaults = MockupScene.DEFAULT_CONFIG;
-    config = {
-      ...config,
-      background: defaults.background,
-      backgroundColorA: defaults.backgroundColorA,
-      backgroundColorB: defaults.backgroundColorB,
-      backgroundAngle: defaults.backgroundAngle,
-      backgroundImageFit: defaults.backgroundImageFit,
-      backgroundImageX: defaults.backgroundImageX,
-      backgroundImageY: defaults.backgroundImageY,
-      backgroundImageZoom: defaults.backgroundImageZoom,
-      backgroundImageBlur: defaults.backgroundImageBlur,
-      backgroundOverlay: defaults.backgroundOverlay,
-      backgroundOverlayOpacity: defaults.backgroundOverlayOpacity,
-      accent: defaults.accent,
-    };
-    assets.backgroundImageUrl = '';
-    assets.backgroundFileName = '';
+    const keys = [
+      'background', 'backgroundColorA', 'backgroundColorB', 'backgroundAngle',
+      'backgroundImageFit', 'backgroundImageX', 'backgroundImageY', 'backgroundImageZoom',
+      'backgroundImageBlur', 'backgroundOverlay', 'backgroundOverlayOpacity', 'accent',
+    ];
+    config = { ...config, ...Object.fromEntries(keys.map((key) => [key, defaults[key]])) };
+    project.backgroundAssetId = null;
     updateControlValues();
     updatePreview();
   });
 
-  document.getElementById('resetTypographyButton').addEventListener('click', () => {
+  document.getElementById('resetTypographyButton').addEventListener('click', async () => {
     const defaults = MockupScene.DEFAULT_CONFIG;
     const keys = [
       'fontFamily', 'customFontName', 'textAlign', 'autoTextColors', 'headlineSize',
@@ -553,12 +1424,22 @@
       'copyWidth', 'copyTop', 'copyLeft',
     ];
     config = { ...config, ...Object.fromEntries(keys.map((key) => [key, defaults[key]])) };
-    assets.fontDataUrl = '';
-    assets.fontFileName = '';
-    if (loadedFontFace) document.fonts.delete(loadedFontFace);
-    loadedFontFace = undefined;
+    project.fontAssetId = null;
+    await applyProjectFont();
     updateControlValues();
     updatePreview();
+  });
+
+  projectNameInput.addEventListener('input', (event) => {
+    project.name = event.target.value;
+    persistProject();
+    scheduleHistory();
+  });
+  projectNameInput.addEventListener('change', (event) => {
+    project.name = event.target.value.trim() || 'Untitled screenshot set';
+    projectNameInput.value = project.name;
+    persistProject();
+    recordHistoryNow();
   });
 
   loadPresetButton.addEventListener('click', () => presetInput.click());
@@ -568,14 +1449,26 @@
     try {
       const parsed = JSON.parse(await file.text());
       config = MockupScene.normalizeConfig(parsed.config ?? parsed);
-      assets.backgroundImageUrl = '';
-      assets.fontDataUrl = '';
-      assets.backgroundFileName = parsed.assetHints?.background ?? '';
-      assets.fontFileName = parsed.assetHints?.font ?? '';
+      if (config.background === 'image') {
+        project.backgroundAssetId = parsed.assetHints?.background
+          ? MockupProject.createAsset(project, {
+              name: parsed.assetHints.background,
+              type: 'image',
+            })
+          : null;
+      }
+      if (config.fontFamily === 'custom') {
+        project.fontAssetId = parsed.assetHints?.font
+          ? MockupProject.createAsset(project, {
+              name: parsed.assetHints.font,
+              type: 'font',
+            })
+          : null;
+      }
+      await applyProjectFont();
       updateControlValues();
       updatePreview();
-      const needsAssets = config.background === 'image' || config.fontFamily === 'custom';
-      showStatus(needsAssets ? `Loaded ${file.name} · reselect local assets` : `Loaded ${file.name}`);
+      showStatus(`Applied ${file.name} to this set and slide`);
     } catch (error) {
       console.error(error);
       showStatus(`Preset failed: ${error.message}`);
@@ -585,13 +1478,14 @@
   });
 
   savePresetButton.addEventListener('click', () => {
+    syncProjectFromConfig();
     const payload = JSON.stringify(
       {
         schemaVersion: 2,
         requirementsVerified: '2026-07-14',
         config,
         assetHints: {
-          screenshot: usingSample ? null : sourceName.textContent,
+          screenshot: assets.screenshotFileName || null,
           background: assets.backgroundFileName || null,
           font: assets.fontFileName || null,
         },
@@ -606,45 +1500,100 @@
     showStatus('Preset saved without local asset data');
   });
 
-  exportButton.addEventListener('click', async () => {
-    exportButton.disabled = true;
-    exportButton.textContent = 'Rendering…';
+  slideStrip.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-slide-id]');
+    if (button) selectSlide(button.dataset.slideId);
+  });
+  document.getElementById('addSlideButton').addEventListener('click', addSlide);
+  document.getElementById('duplicateSlideButton').addEventListener('click', duplicateSlide);
+  document.getElementById('renameSlideButton').addEventListener('click', renameSlide);
+  document.getElementById('deleteSlideButton').addEventListener('click', deleteSlide);
+  document.getElementById('moveSlideLeftButton').addEventListener('click', () => moveSlide(-1));
+  document.getElementById('moveSlideRightButton').addEventListener('click', () => moveSlide(1));
+  document.getElementById('newProjectButton').addEventListener('click', newProject);
+  undoButton.addEventListener('click', undo);
+  redoButton.addEventListener('click', redo);
+  projectOpenButton.addEventListener('click', () => projectInput.click());
+  projectSaveButton.addEventListener('click', saveProject);
+  projectInput.addEventListener('change', async () => {
+    const [file] = projectInput.files;
+    if (!file) return;
     try {
-      const response = await fetch('/api/render', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          config,
-          assets: {
-            screenImageUrl: assets.screenImageUrl,
-            backgroundImageUrl: assets.backgroundImageUrl,
-            fontDataUrl: assets.fontDataUrl,
-          },
-        }),
-      });
-      if (!response.ok) throw new Error(await response.text());
-      const blob = await response.blob();
-      const target = config.canvasPreset === 'custom' ? 'custom' : config.canvasPreset;
-      downloadBlob(blob, `mockup-${target}-${config.width}x${config.height}.png`);
-      showStatus('PNG rendered locally');
+      await openProjectFile(file);
     } catch (error) {
       console.error(error);
-      showStatus(`Export failed: ${error.message}`);
+      showStatus(`Project failed: ${error.message}`);
     } finally {
-      exportButton.disabled = false;
-      exportButton.textContent = 'Export PNG';
+      projectInput.value = '';
+    }
+  });
+  exportButton.addEventListener('click', exportCurrentSlide);
+  exportSetButton.addEventListener('click', exportProjectSet);
+
+  document.addEventListener('keydown', (event) => {
+    const target = event.target;
+    const isEditing = target instanceof HTMLInputElement
+      || target instanceof HTMLTextAreaElement
+      || target instanceof HTMLSelectElement
+      || target?.isContentEditable;
+    if (isEditing) return;
+    const command = event.metaKey || event.ctrlKey;
+    if (command && event.key.toLowerCase() === 'z') {
+      event.preventDefault();
+      if (event.shiftKey) redo();
+      else undo();
+      return;
+    }
+    if (command && event.key.toLowerCase() === 'y') {
+      event.preventDefault();
+      redo();
+      return;
+    }
+    if (command && event.key.toLowerCase() === 'd') {
+      event.preventDefault();
+      duplicateSlide();
+      return;
+    }
+    if (command && event.key.toLowerCase() === 's') {
+      event.preventDefault();
+      saveProject();
+      return;
+    }
+    if (event.altKey && event.key === 'ArrowLeft') {
+      event.preventDefault();
+      moveSlide(-1);
+    }
+    if (event.altKey && event.key === 'ArrowRight') {
+      event.preventDefault();
+      moveSlide(1);
     }
   });
 
-  window.addEventListener('resize', fitPreview);
+  window.addEventListener('resize', () => {
+    fitPreview();
+    fitSetOverview();
+  });
 
   (async () => {
     try {
-      config = loadStoredConfig() ?? config;
-      await fetchSample(config.device);
+      project = loadStoredProject();
+      config = MockupProject.composeConfig(project);
+      await hydrateSampleAssets();
+      composeSelectedConfig();
+      await applyProjectFont();
       updateControlValues();
-      updatePreview();
+      updatePreview({ record: false });
+      resetHistory();
       window.studioReady = true;
+      window.mockupStudio = {
+        getProject: () => MockupProject.serialize(project, true),
+        selectSlide,
+        addSlide,
+        duplicateSlide,
+        setViewMode,
+        undo,
+        redo,
+      };
     } catch (error) {
       console.error(error);
       showStatus(error.message);

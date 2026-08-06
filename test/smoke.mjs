@@ -78,4 +78,4 @@ for (const render of renders) {
 }
 
 await rm(tempDirectory, { recursive: true, force: true });
-console.log(`Mockup Studio rendered ${renders.length} verified store targets.`);
+console.log(`App Screenshot Forge rendered ${renders.length} verified store targets.`);

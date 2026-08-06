@@ -89,7 +89,7 @@
     accent: '#6ee7f5',
     showDevice: true,
     fontFamily: 'system',
-    customFontName: 'Mockup Studio Custom',
+    customFontName: 'App Screenshot Forge Custom',
     textAlign: 'left',
     autoTextColors: true,
     headlineSize: 102,
@@ -354,6 +354,7 @@
     if (screen && assets.screenImageUrl && screen.src !== assets.screenImageUrl) {
       screen.src = assets.screenImageUrl;
     }
+    if (screen && !assets.screenImageUrl) screen.removeAttribute('src');
     return config;
   }
 
