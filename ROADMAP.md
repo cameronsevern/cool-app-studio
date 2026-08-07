@@ -69,6 +69,12 @@ repository becomes public.
   RDAP registration for `appscreenshotforge.com`, `.app`, or `.dev`. **Open
   Mockup Studio** was rejected because a public `OpenMockup-Studio` project
   already serves a closely related browser mockup and batch-export use case.
+  An expanded similar-name search on 2026-08-07 found Apple's existing
+  [Forge — Quick Marketing Images](https://apps.apple.com/us/app/forge-quick-marketing-images/id1597630288)
+  in the same app-screenshot-to-marketing-art category and the adjacent
+  [SnapForge](https://chromewebstore.google.com/detail/snapforge-screenshot-edit/jddlbdehkgmdcgmmjinaplmfdaogelin)
+  screenshot editor. Exact availability therefore does not establish trademark
+  clearance; the human/legal gate below remains open.
 - [ ] Complete formal trademark review, register the chosen domain/package, and
   rename the GitHub repository. **Human/legal/account/external gate.**
 - [x] Adopt Apache-2.0 for the source and declare it in the npm package.
