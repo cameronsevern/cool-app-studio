@@ -84,21 +84,29 @@ const samplePaths = {
 
 function parseFlags(values) {
   const result = { _: [] };
-  const booleanFlags = new Set(['help', 'manualTextColors', 'noDevice', 'open', 'transparent']);
+  const booleanFlags = new Set([
+    'help',
+    'manualTextColors',
+    'noDevice',
+    'noOpen',
+    'open',
+    'transparent',
+  ]);
   for (let index = 0; index < values.length; index += 1) {
     const value = values[index];
     if (!value.startsWith('--')) {
       result._.push(value);
       continue;
     }
-    const key = value.slice(2);
+    const rawKey = value.slice(2);
+    const key = rawKey === 'no-open' ? 'noOpen' : rawKey;
     if (booleanFlags.has(key)) {
       result[key] = true;
       continue;
     }
     const next = values[index + 1];
     if (next === undefined || next.startsWith('--')) {
-      throw new Error(`Missing value for --${key}`);
+      throw new Error(`Missing value for --${rawKey}`);
     }
     result[key] = next;
     index += 1;
@@ -571,9 +579,18 @@ async function closeResources(server) {
 }
 
 function openUrl(url) {
-  if (platform() === 'darwin') execFile('open', [url]);
-  else if (platform() === 'win32') execFile('cmd', ['/c', 'start', '', url]);
-  else execFile('xdg-open', [url]);
+  let command = 'xdg-open';
+  let args = [url];
+  if (platform() === 'darwin') command = 'open';
+  else if (platform() === 'win32') {
+    command = 'cmd';
+    args = ['/c', 'start', '', url];
+  }
+  execFile(command, args, (error) => {
+    if (error) {
+      console.warn(`Could not open a browser automatically. Open ${url} manually.`);
+    }
+  });
 }
 
 async function serve(flags) {
@@ -582,11 +599,11 @@ async function serve(flags) {
   const port = await listen(server, requestedPort, flags.port === undefined);
   const url = `http://127.0.0.1:${port}`;
   console.log(`App Screenshot Forge: ${url}`);
-  if (port !== requestedPort) {
+  if (requestedPort !== 0 && port !== requestedPort) {
     console.log(`Port ${requestedPort} was busy, so App Screenshot Forge selected ${port}.`);
   }
   console.log('Local-only renderer. Nothing is uploaded. Press Ctrl+C to stop.');
-  if (flags.open) openUrl(url);
+  if (flags.open && !flags.noOpen) openUrl(url);
 
   const stop = async () => {
     await closeResources(server);
@@ -724,10 +741,13 @@ async function render(flags) {
 }
 
 const commandLine = process.argv.slice(2);
-const [command = 'serve', ...rest] = commandLine;
+const hasExplicitCommand = Boolean(commandLine[0] && !commandLine[0].startsWith('--'));
+const command = hasExplicitCommand ? commandLine[0] : 'serve';
+const rest = hasExplicitCommand ? commandLine.slice(1) : commandLine;
 const flags = parseFlags(rest);
-if (commandLine.length === 0) flags.open = true;
+if (!hasExplicitCommand && !flags.noOpen) flags.open = true;
 const usage = `Usage:
+  app-screenshot-forge [--port 4312] [--no-open]
   app-screenshot-forge serve [--port 4312] [--open]
   app-screenshot-forge render --input screenshot.png --output mockup.png [options]
 

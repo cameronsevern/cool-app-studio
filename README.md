@@ -25,17 +25,39 @@ in [SUPPORT.md](SUPPORT.md).
 
 Requirements: Node.js 22 or newer and Chrome, Edge, Brave, or Chromium.
 
+From a source checkout:
+
 ```sh
 npm install
 npm start
 ```
 
-The editor opens at `http://127.0.0.1:4312`. It is bound to the local machine
-only. If no supported system browser is found, install Playwright's Chromium:
+The editor opens at a printed `127.0.0.1` address and keeps all screenshots and
+project assets on the local machine. Press `Ctrl+C` in the terminal to stop it.
+
+After the public `0.1.0` package is available on npm, the equivalent one-off
+command will be:
+
+```sh
+npx app-screenshot-forge
+```
+
+To start the packaged server without opening a browser, use
+`npx app-screenshot-forge --no-open` and visit the printed address manually.
+
+If rendering reports that no browser executable is available, install
+Playwright's Chromium and launch the editor again:
 
 ```sh
 npx playwright install chromium
 ```
+
+Then rerun `npm start` from a source checkout or `npx app-screenshot-forge`
+after package publication.
+
+If you installed a persistent global command instead of using `npx`, remove it
+with `npm uninstall --global app-screenshot-forge`. The project does not install
+a background service or retain screenshots outside files you explicitly save.
 
 ## Interactive workflow
 

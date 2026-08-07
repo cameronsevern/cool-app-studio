@@ -6,7 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const child = spawn(process.execPath, ['src/cli.mjs', 'serve', '--port', '0'], {
+const child = spawn(process.execPath, ['src/cli.mjs', '--port', '0', '--no-open'], {
   cwd: root,
   stdio: ['ignore', 'pipe', 'pipe'],
 });

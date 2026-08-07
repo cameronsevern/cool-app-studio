@@ -19,6 +19,8 @@ Semantic Versioning after its first public release.
 - Restricted npm package contents to runtime source and examples.
 - Allow slower clean machines up to 60 seconds to finish browser renders before
   reporting a timeout.
+- Made the argument-free `npx app-screenshot-forge` path open the local editor,
+  with a headless `--no-open` option and actionable browser recovery guidance.
 
 ### Product work in progress
 
