@@ -49,6 +49,16 @@ function requestWithHost(path, host) {
 }
 
 try {
+  const editor = await fetch(`${serverUrl}/`);
+  assert.equal(editor.status, 200);
+  const editorHtml = await editor.text();
+  const capabilityMatch = editorHtml.match(
+    /<meta name="app-screenshot-forge-capability" content="([^"]+)">/,
+  );
+  assert.ok(capabilityMatch, 'editor should receive a process capability token');
+  const capabilityToken = capabilityMatch[1];
+  assert.equal(capabilityToken.length, 64);
+
   const health = await fetch(`${serverUrl}/health`);
   assert.equal(health.status, 200);
   assert.deepEqual(await health.json(), { ok: true, localOnly: true });
@@ -69,6 +79,35 @@ try {
     body: '{}',
   });
   assert.equal(invalidOrigin.status, 403);
+
+  const missingCapability = await fetch(`${serverUrl}/api/render`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  });
+  assert.equal(missingCapability.status, 403);
+  assert.match(await missingCapability.text(), /capability token is not valid/);
+
+  const invalidCapability = await fetch(`${serverUrl}/api/render`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-App-Screenshot-Forge-Capability': 'invalid',
+    },
+    body: '{}',
+  });
+  assert.equal(invalidCapability.status, 403);
+
+  const validCapability = await fetch(`${serverUrl}/api/render`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-App-Screenshot-Forge-Capability': capabilityToken,
+    },
+    body: '{}',
+  });
+  assert.equal(validCapability.status, 400);
+  assert.match(await validCapability.text(), /image screenshot is required/);
 
   const invalidContentType = await fetch(`${serverUrl}/api/render`, {
     method: 'POST',

@@ -46,6 +46,17 @@
   const PROJECT_STORAGE_KEYS = ['mockup-studio.project.v4', 'mockup-studio.project.v3'];
   const CONFIG_STORAGE_KEYS = ['mockup-studio.config.v2', 'mockup-studio.config.v1'];
   const HISTORY_LIMIT = 60;
+  const capabilityToken = document.querySelector(
+    'meta[name="app-screenshot-forge-capability"]',
+  )?.content;
+
+  function apiFetch(resource, options = {}) {
+    const headers = new Headers(options.headers);
+    if (capabilityToken) {
+      headers.set('X-App-Screenshot-Forge-Capability', capabilityToken);
+    }
+    return fetch(resource, { ...options, headers });
+  }
 
   let project;
   let config = MockupScene.normalizeConfig();
@@ -1039,7 +1050,7 @@
           outputIndex: selectedIndex - span.startIndex,
         };
       }
-      const response = await fetch(endpoint, {
+      const response = await apiFetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -1072,7 +1083,7 @@
     exportSetButton.disabled = true;
     exportSetButton.textContent = `Rendering ${project.slides.length}…`;
     try {
-      const response = await fetch('/api/render-batch', {
+      const response = await apiFetch('/api/render-batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(createBatchPayload()),

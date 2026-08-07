@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
@@ -26,6 +26,9 @@ const studioDirectory = resolve(toolDirectory, 'studio');
 const examplesDirectory = resolve(projectRoot, 'examples');
 const renderJobs = new Map();
 let browserPromise;
+const CAPABILITY_HEADER = 'x-app-screenshot-forge-capability';
+const CAPABILITY_TOKEN_PLACEHOLDER = '__APP_SCREENSHOT_FORGE_CAPABILITY_TOKEN__';
+const PROCESS_CAPABILITY_TOKEN = randomBytes(32).toString('hex');
 
 const SECURITY_HEADERS = {
   'Content-Security-Policy': [
@@ -111,6 +114,15 @@ function send(response, status, body, contentType = 'text/plain; charset=utf-8')
   response.end(body);
 }
 
+function hasCapabilityToken(request) {
+  const supplied = request.headers[CAPABILITY_HEADER];
+  if (typeof supplied !== 'string') return false;
+  const expectedBuffer = Buffer.from(PROCESS_CAPABILITY_TOKEN, 'utf8');
+  const suppliedBuffer = Buffer.from(supplied, 'utf8');
+  return suppliedBuffer.length === expectedBuffer.length
+    && timingSafeEqual(suppliedBuffer, expectedBuffer);
+}
+
 function validateRequest(request, response, server, url) {
   const address = server.address();
   if (!address || typeof address === 'string') {
@@ -124,21 +136,29 @@ function validateRequest(request, response, server, url) {
     return false;
   }
 
-  if (request.method !== 'POST' || !url.pathname.startsWith('/api/')) return true;
+  const isApiRequest = url.pathname.startsWith('/api/');
+  if (!isApiRequest) return true;
 
-  const expectedOrigin = `http://${expectedHost}`;
-  const origin = request.headers.origin;
-  if (origin && origin !== expectedOrigin) {
-    send(response, 403, 'Request origin is not allowed');
-    return false;
+  if (request.method === 'POST') {
+    const expectedOrigin = `http://${expectedHost}`;
+    const origin = request.headers.origin;
+    if (origin && origin !== expectedOrigin) {
+      send(response, 403, 'Request origin is not allowed');
+      return false;
+    }
+
+    const contentType = String(request.headers['content-type'] ?? '')
+      .split(';', 1)[0]
+      .trim()
+      .toLowerCase();
+    if (contentType !== 'application/json') {
+      send(response, 415, 'API requests must use application/json');
+      return false;
+    }
   }
 
-  const contentType = String(request.headers['content-type'] ?? '')
-    .split(';', 1)[0]
-    .trim()
-    .toLowerCase();
-  if (contentType !== 'application/json') {
-    send(response, 415, 'API requests must use application/json');
+  if (!hasCapabilityToken(request)) {
+    send(response, 403, 'Render capability token is not valid');
     return false;
   }
 
@@ -500,7 +520,13 @@ function createStudioServer() {
       ]);
       if (!allowedFiles.has(requestedFile)) return send(response, 404, 'Not found');
       const path = resolve(studioDirectory, requestedFile);
-      return send(response, 200, await readFile(path), MIME_TYPES[extname(path)]);
+      const file = await readFile(path, 'utf8');
+      return send(
+        response,
+        200,
+        file.replaceAll(CAPABILITY_TOKEN_PLACEHOLDER, PROCESS_CAPABILITY_TOKEN),
+        MIME_TYPES[extname(path)],
+      );
     } catch (error) {
       console.error(error);
       return send(response, 500, error.message);

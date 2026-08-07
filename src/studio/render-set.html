@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="app-screenshot-forge-capability" content="__APP_SCREENSHOT_FORGE_CAPABILITY_TOKEN__">
     <title>App Screenshot Forge Set Render</title>
     <link rel="stylesheet" href="/scene.css">
     <style>
@@ -77,6 +78,9 @@
     <script>
       (async () => {
         const job = new URLSearchParams(window.location.search).get('job');
+        const capabilityToken = document.querySelector(
+          'meta[name="app-screenshot-forge-capability"]',
+        )?.content;
         const canvas = document.getElementById('setCanvas');
         const template = document.getElementById('sceneTemplate');
 
@@ -103,7 +107,9 @@
         }
 
         try {
-          const response = await fetch(`/api/job/${encodeURIComponent(job)}`);
+          const response = await fetch(`/api/job/${encodeURIComponent(job)}`, {
+            headers: { 'X-App-Screenshot-Forge-Capability': capabilityToken },
+          });
           if (!response.ok) throw new Error(`Set render job failed: ${response.status}`);
           const payload = await response.json();
           const items = payload.items;

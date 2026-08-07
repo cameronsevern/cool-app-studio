@@ -152,6 +152,8 @@ device-only layer, and `--noDevice` creates a text-led composition.
 - The HTTP server listens only on `127.0.0.1`.
 - Unexpected loopback hosts, cross-origin browser API requests, and non-JSON API
   requests are rejected.
+- Sensitive render API requests also require a per-process capability token held
+  only by the local editor and renderer pages; it is not an account credential.
 - Screenshot, background, and font data is read into memory for preview and
   rendering; it is not written by the server or uploaded.
 - Export jobs are removed from memory when the render finishes.

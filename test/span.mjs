@@ -34,6 +34,18 @@ const serverUrl = await new Promise((resolveUrl, reject) => {
   });
 });
 
+const editor = await fetch(`${serverUrl}/`);
+const editorHtml = await editor.text();
+const capabilityMatch = editorHtml.match(
+  /<meta name="app-screenshot-forge-capability" content="([^"]+)">/,
+);
+if (!capabilityMatch) throw new Error('Span test could not find the process capability token');
+const capabilityToken = capabilityMatch[1];
+const apiHeaders = {
+  'Content-Type': 'application/json',
+  'X-App-Screenshot-Forge-Capability': capabilityToken,
+};
+
 const items = [
   {
     filename: '01-left.png',
@@ -65,7 +77,7 @@ try {
   await mkdir(extractedDirectory, { recursive: true });
   const response = await fetch(`${serverUrl}/api/render-batch`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: apiHeaders,
     body: requestBody,
   });
   const responseError = response.ok ? '' : await response.text();
@@ -83,7 +95,7 @@ try {
 
   const currentResponse = await fetch(`${serverUrl}/api/render-batch`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: apiHeaders,
     body: JSON.stringify({ items, assets: { screen: sampleDataUrl }, spanDevice, outputIndex: 1 }),
   });
   const currentError = currentResponse.ok ? '' : await currentResponse.text();
@@ -95,7 +107,7 @@ try {
 
   const invalidResponse = await fetch(`${serverUrl}/api/render-batch`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: apiHeaders,
     body: JSON.stringify({
       items,
       assets: { screen: sampleDataUrl },

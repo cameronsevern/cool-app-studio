@@ -21,7 +21,9 @@ should receive those assets.
 
 The core product does not require an account, telemetry service, hosted
 renderer, or cloud storage. The local server listens only on `127.0.0.1` and
-rejects unexpected hosts and browser origins.
+rejects unexpected hosts and browser origins. Sensitive render API requests
+also require a per-process capability token delivered only to local product
+pages; it is not sent to external services.
 
 Package installation, browser installation, update checks, source hosting, and
 future integrations may contact their respective providers. Those operations

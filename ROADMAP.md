@@ -1,6 +1,6 @@
 # App Screenshot Forge Roadmap
 
-Last updated: 2026-08-05
+Last updated: 2026-08-07
 
 This file is the ordered product and release queue for maintainers and the
 nightly product loop. It describes the intended outcome, the boundaries that
@@ -80,7 +80,7 @@ repository becomes public.
 - [x] Add dependency update configuration for npm and GitHub Actions.
 - [x] Add strict loopback host/origin checks, JSON content-type enforcement, and
   browser security headers.
-- [ ] Add a per-process capability token to sensitive local render endpoints and
+- [x] Add a per-process capability token to sensitive local render endpoints and
   verify that ordinary browser use, CLI rendering, and tests still work.
 - [ ] Perform a full history and secret scan before visibility changes. The
   current lightweight text scan found no credential-shaped strings, but this is
