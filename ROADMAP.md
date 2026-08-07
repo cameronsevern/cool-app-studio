@@ -93,8 +93,12 @@ repository becomes public.
   [asset inventory](docs/ASSET_PROVENANCE.md) is ready for maintainer
   confirmation. **Human/legal gate.**
 - [x] Refresh the editor screenshot and add a short current workflow recording.
-- [ ] Prove a clean install and full export on fresh macOS, Windows, and Linux
-  environments through hosted CI or equivalent machines.
+- [x] Prove a clean install and full export on fresh macOS, Windows, and Linux
+  environments. GitHub Actions run
+  [31211972270](https://github.com/cameronsevern/mockup-studio/actions/runs/31211972270)
+  passed all six macOS/Ubuntu/Windows and Node 22/24 jobs at `148b3cc`; a packed
+  `0.1.0` tarball also installed and rendered successfully in a blank local
+  consumer project.
 
 Exit criteria:
 

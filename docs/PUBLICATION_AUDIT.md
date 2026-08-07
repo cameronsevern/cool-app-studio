@@ -49,6 +49,18 @@ Before changing visibility, the maintainer must choose one of these outcomes:
 
 No history was rewritten by this audit.
 
+## Clean install and hosted CI
+
+- Packed `app-screenshot-forge@0.1.0`, installed it into a blank temporary npm
+  consumer project, invoked the installed CLI, and rendered a verified 1024×500
+  Google Play feature graphic.
+- GitHub Actions run
+  [31211972270](https://github.com/cameronsevern/mockup-studio/actions/runs/31211972270)
+  passed at `148b3cc3d0a65f2865988650ead4c4fe762e097f`.
+- All six jobs completed successfully: macOS, Ubuntu, and Windows on Node 22 and
+  Node 24. Every job performed a clean checkout, `npm ci`, Chromium installation,
+  and `npm test`; Ubuntu on Node 24 also verified the package contents.
+
 ## Reproduction
 
 The principal scanner invocation was:
