@@ -1,4 +1,4 @@
-# App Screenshot Forge Roadmap
+# Cool App Studio Roadmap
 
 Last updated: 2026-08-07
 
@@ -8,7 +8,7 @@ must remain true, and the evidence required before work is called complete.
 
 ## Product contract
 
-App Screenshot Forge is a local-first tool for turning app screenshots into polished,
+Cool App Studio is a local-first tool for turning app screenshots into polished,
 store-ready image sets. It serves two connected users:
 
 - A designer or developer who wants to open an editor and export a complete
@@ -50,7 +50,8 @@ release:
   landscape, and custom canvas targets.
 - [x] iPhone-style and Pixel-style parametric device presentations.
 - [x] Local screenshots, background images, custom fonts, and asset-free presets.
-- [x] Portable `.screenshot-forge` projects with schema normalization and migration.
+- [x] Portable `.cool-app-studio` projects with schema normalization and migration,
+  plus imports from the former `.screenshot-forge` and `.mockup-studio` formats.
 - [x] Multi-slide sets with shared styling and slide-level composition controls.
 - [x] Continuous devices across adjacent panels with exact export crops.
 - [x] Individual PNG and deterministic ordered ZIP export.
@@ -64,17 +65,16 @@ repository becomes public.
 
 - [x] Reconcile the current multi-slide/project work into a reviewed, coherent
   commit without absorbing unrelated changes.
-- [x] Select **App Screenshot Forge** as the public working name. Live checks on
-  2026-08-05 found no exact product result, GitHub repository, npm package, or
-  RDAP registration for `appscreenshotforge.com`, `.app`, or `.dev`. **Open
-  Mockup Studio** was rejected because a public `OpenMockup-Studio` project
-  already serves a closely related browser mockup and batch-export use case.
-  An expanded similar-name search on 2026-08-07 found Apple's existing
+- [x] Select **Cool App Studio** as the public working name. Cameron approved the
+  name interactively on 2026-08-07, using `Cool` as a reusable prefix for tools
+  from Cool S Technologies. Exact web, GitHub-repository, and npm-package checks
+  found no existing `Cool App Studio` product. The former **App Screenshot
+  Forge** working name was retired after a similar-name search found Apple's
   [Forge — Quick Marketing Images](https://apps.apple.com/us/app/forge-quick-marketing-images/id1597630288)
-  in the same app-screenshot-to-marketing-art category and the adjacent
+  in the same category and the adjacent
   [SnapForge](https://chromewebstore.google.com/detail/snapforge-screenshot-edit/jddlbdehkgmdcgmmjinaplmfdaogelin)
-  screenshot editor. Exact availability therefore does not establish trademark
-  clearance; the human/legal gate below remains open.
+  editor. Exact availability does not establish trademark clearance; the
+  human/legal gate below remains open.
 - [ ] Complete formal trademark review, register the chosen domain/package, and
   rename the GitHub repository. **Human/legal/account/external gate.**
 - [x] Adopt Apache-2.0 for the source and declare it in the npm package.
@@ -159,7 +159,7 @@ claim rather than a general aspiration.
   fallback explicit in output metadata.
 - [ ] Add repeat-render tests and visual regression fixtures for representative
   devices, fonts, backgrounds, transparent output, and spanning sets.
-- [ ] Add `app-screenshot-forge doctor` to report Node, browser, renderer, platform,
+- [ ] Add `cool-app-studio doctor` to report Node, browser, renderer, platform,
   supported formats, and actionable remediation.
 - [ ] Add crash-safe local recovery with clear controls for retaining or clearing
   screenshot bytes on the machine.

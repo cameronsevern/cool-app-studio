@@ -42,18 +42,22 @@
   const spanY = document.getElementById('spanY');
   const spanScale = document.getElementById('spanScale');
 
-  const PROJECT_STORAGE_KEY = 'app-screenshot-forge.project.v4';
-  const PROJECT_STORAGE_KEYS = ['mockup-studio.project.v4', 'mockup-studio.project.v3'];
+  const PROJECT_STORAGE_KEY = 'cool-app-studio.project.v4';
+  const PROJECT_STORAGE_KEYS = [
+    'app-screenshot-forge.project.v4',
+    'mockup-studio.project.v4',
+    'mockup-studio.project.v3',
+  ];
   const CONFIG_STORAGE_KEYS = ['mockup-studio.config.v2', 'mockup-studio.config.v1'];
   const HISTORY_LIMIT = 60;
   const capabilityToken = document.querySelector(
-    'meta[name="app-screenshot-forge-capability"]',
+    'meta[name="cool-app-studio-capability"]',
   )?.content;
 
   function apiFetch(resource, options = {}) {
     const headers = new Headers(options.headers);
     if (capabilityToken) {
-      headers.set('X-App-Screenshot-Forge-Capability', capabilityToken);
+      headers.set('X-Cool-App-Studio-Capability', capabilityToken);
     }
     return fetch(resource, { ...options, headers });
   }
@@ -943,7 +947,7 @@
     payload.localOnly = true;
     downloadBlob(
       new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }),
-      `${MockupProject.safeFilename(project.name)}.screenshot-forge`,
+      `${MockupProject.safeFilename(project.name)}.cool-app-studio`,
     );
     showStatus(`Project saved with ${Object.keys(payload.project.assets).length} local assets`);
   }
@@ -1596,7 +1600,7 @@
       updatePreview({ record: false });
       resetHistory();
       window.studioReady = true;
-      window.mockupStudio = {
+      window.coolAppStudio = {
         getProject: () => MockupProject.serialize(project, true),
         selectSlide,
         addSlide,
@@ -1605,6 +1609,7 @@
         undo,
         redo,
       };
+      window.mockupStudio = window.coolAppStudio;
     } catch (error) {
       console.error(error);
       showStatus(error.message);

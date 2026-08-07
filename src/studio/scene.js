@@ -89,7 +89,7 @@
     accent: '#6ee7f5',
     showDevice: true,
     fontFamily: 'system',
-    customFontName: 'App Screenshot Forge Custom',
+    customFontName: 'Cool App Studio Custom',
     textAlign: 'left',
     autoTextColors: true,
     headlineSize: 102,

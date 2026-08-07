@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="app-screenshot-forge-capability" content="__APP_SCREENSHOT_FORGE_CAPABILITY_TOKEN__">
-    <title>App Screenshot Forge Render</title>
+    <meta name="cool-app-studio-capability" content="__COOL_APP_STUDIO_CAPABILITY_TOKEN__">
+    <title>Cool App Studio Render</title>
     <link rel="stylesheet" href="/scene.css">
     <style>
       html,
@@ -52,7 +52,7 @@
       (async () => {
         const job = new URLSearchParams(window.location.search).get('job');
         const capabilityToken = document.querySelector(
-          'meta[name="app-screenshot-forge-capability"]',
+          'meta[name="cool-app-studio-capability"]',
         )?.content;
         async function decodeImage(dataUrl) {
           if (!dataUrl) return;
@@ -63,7 +63,7 @@
         }
         try {
           const response = await fetch(`/api/job/${encodeURIComponent(job)}`, {
-            headers: { 'X-App-Screenshot-Forge-Capability': capabilityToken },
+            headers: { 'X-Cool-App-Studio-Capability': capabilityToken },
           });
           if (!response.ok) throw new Error(`Render job failed: ${response.status}`);
           const payload = await response.json();
@@ -73,7 +73,7 @@
             decodeImage(assets.backgroundImageUrl),
           ]);
           if (assets.fontDataUrl) {
-            const fontName = payload.config.customFontName ?? 'App Screenshot Forge Custom';
+            const fontName = payload.config.customFontName ?? 'Cool App Studio Custom';
             const font = new FontFace(fontName, `url(${assets.fontDataUrl})`);
             document.fonts.add(await font.load());
           }

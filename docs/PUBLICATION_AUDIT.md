@@ -51,15 +51,22 @@ No history was rewritten by this audit.
 
 ## Clean install and hosted CI
 
-- Packed `app-screenshot-forge@0.1.0`, installed it into a blank temporary npm
-  consumer project, invoked the installed CLI, and rendered a verified 1024×500
-  Google Play feature graphic.
+- The audited baseline packed the former `app-screenshot-forge@0.1.0` package,
+  installed it into a blank temporary npm consumer project, invoked the
+  installed CLI, and rendered a verified 1024×500 Google Play feature graphic.
 - GitHub Actions run
   [31211972270](https://github.com/cameronsevern/mockup-studio/actions/runs/31211972270)
   passed at `148b3cc3d0a65f2865988650ead4c4fe762e097f`.
 - All six jobs completed successfully: macOS, Ubuntu, and Windows on Node 22 and
   Node 24. Every job performed a clean checkout, `npm ci`, Chromium installation,
   and `npm test`; Ubuntu on Node 24 also verified the package contents.
+
+The approved 2026-08-07 naming follow-up packed `cool-app-studio@0.1.0`,
+installed it into another blank temporary consumer project, invoked the
+installed `cool-app-studio` binary, and rendered a verified 1024×500 Google
+Play feature graphic. The full local suite also passed with the new name. The
+hosted run above predates the rename, so hosted acceptance for the renamed
+package remains pending until the branch is deliberately published.
 
 ## Reproduction
 

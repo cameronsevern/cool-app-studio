@@ -1,6 +1,6 @@
 # Privacy and Local-First Boundaries
 
-App Screenshot Forge is designed so product screenshots and brand assets do not need to
+Cool App Studio is designed so product screenshots and brand assets do not need to
 leave the user's machine.
 
 ## What stays local
@@ -10,7 +10,7 @@ leave the user's machine.
   `127.0.0.1` on the same machine.
 - Render jobs are removed from server memory when their render completes.
 - Browser storage retains project metadata, not the selected asset bytes.
-- A saved `.screenshot-forge` file deliberately contains the local assets used by
+- A saved `.cool-app-studio` file deliberately contains the local assets used by
   that project so it can be reopened later.
 
 A portable project may therefore contain confidential screenshots, logos, and

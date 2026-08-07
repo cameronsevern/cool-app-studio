@@ -1,6 +1,6 @@
 # Changelog
 
-Notable changes to App Screenshot Forge will be documented here. The project follows
+Notable changes to Cool App Studio will be documented here. The project follows
 Semantic Versioning after its first public release.
 
 ## [Unreleased]
@@ -14,12 +14,15 @@ Semantic Versioning after its first public release.
 
 ### Changed
 
+- Renamed the product, npm package, and CLI to Cool App Studio and
+  `cool-app-studio`; existing `.screenshot-forge` and `.mockup-studio` project
+  bundles and browser autosaves continue to migrate forward.
 - Prepared the unpublished npm package as a `0.1.0` public alpha targeting
   supported Node.js LTS releases.
 - Restricted npm package contents to runtime source and examples.
 - Allow slower clean machines up to 60 seconds to finish browser renders before
   reporting a timeout.
-- Made the argument-free `npx app-screenshot-forge` path open the local editor,
+- Made the argument-free `npx cool-app-studio` path open the local editor,
   with a headless `--no-open` option and actionable browser recovery guidance.
 
 ### Product work in progress

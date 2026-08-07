@@ -1,4 +1,4 @@
-# Contributing to App Screenshot Forge
+# Contributing to Cool App Studio
 
 Thank you for helping make local, repeatable screenshot production better.
 

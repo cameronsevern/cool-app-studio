@@ -29,4 +29,4 @@ const { stdout } = await execFileAsync('unzip', ['-Z1', archivePath]);
 assert.deepEqual(stdout.trim().split('\n'), entries.map((entry) => entry.name));
 
 await rm(tempDirectory, { recursive: true, force: true });
-console.log('App Screenshot Forge batch ZIP checks passed.');
+console.log('Cool App Studio batch ZIP checks passed.');

@@ -1,6 +1,6 @@
 # Support
 
-App Screenshot Forge is an early open-source project maintained on a best-effort
+Cool App Studio is an early open-source project maintained on a best-effort
 basis.
 
 ## Where to ask
@@ -17,7 +17,7 @@ basis.
 
 ## What to include
 
-Include the App Screenshot Forge version or commit, operating system, Node and
+Include the Cool App Studio version or commit, operating system, Node and
 browser versions, exact steps or CLI flags, expected result, and sanitized
 output. Prefer the included sample assets or a minimal synthetic project.
 

@@ -23,7 +23,7 @@ child.stderr.on('data', (chunk) => { stderr += chunk; });
 const serverUrl = await new Promise((resolveUrl, reject) => {
   const timer = setTimeout(() => reject(new Error(`Span test server timed out. ${stderr}`)), 10_000);
   child.stdout.on('data', (chunk) => {
-    const match = chunk.toString().match(/App Screenshot Forge: (http:\/\/127\.0\.0\.1:\d+)/);
+    const match = chunk.toString().match(/Cool App Studio: (http:\/\/127\.0\.0\.1:\d+)/);
     if (!match) return;
     clearTimeout(timer);
     resolveUrl(match[1]);
@@ -37,13 +37,13 @@ const serverUrl = await new Promise((resolveUrl, reject) => {
 const editor = await fetch(`${serverUrl}/`);
 const editorHtml = await editor.text();
 const capabilityMatch = editorHtml.match(
-  /<meta name="app-screenshot-forge-capability" content="([^"]+)">/,
+  /<meta name="cool-app-studio-capability" content="([^"]+)">/,
 );
 if (!capabilityMatch) throw new Error('Span test could not find the process capability token');
 const capabilityToken = capabilityMatch[1];
 const apiHeaders = {
   'Content-Type': 'application/json',
-  'X-App-Screenshot-Forge-Capability': capabilityToken,
+  'X-Cool-App-Studio-Capability': capabilityToken,
 };
 
 const items = [
@@ -124,4 +124,4 @@ try {
   await rm(tempDirectory, { recursive: true, force: true });
 }
 
-console.log('App Screenshot Forge spanning-device crop checks passed.');
+console.log('Cool App Studio spanning-device crop checks passed.');

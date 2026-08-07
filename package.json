@@ -1,8 +1,8 @@
 {
-  "name": "app-screenshot-forge",
+  "name": "cool-app-studio",
   "version": "0.1.0",
   "private": false,
-  "description": "A local, parametric device mockup editor and deterministic PNG renderer.",
+  "description": "A local-first editor and deterministic renderer for app-store screenshots.",
   "keywords": [
     "app-store",
     "cli",
@@ -27,7 +27,7 @@
     "src/"
   ],
   "bin": {
-    "app-screenshot-forge": "src/cli.mjs"
+    "cool-app-studio": "src/cli.mjs"
   },
   "scripts": {
     "start": "node src/cli.mjs serve --open",

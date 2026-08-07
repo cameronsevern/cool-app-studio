@@ -126,4 +126,4 @@ assert.equal(legacyProject.slides.length, 1);
 assert.equal(projects.composeConfig(legacyProject).headline, 'Design, in perspective.');
 assert.equal(projects.safeFilename('  App Store: Launch!  '), 'app-store-launch');
 
-console.log('App Screenshot Forge config, project, asset, and migration checks passed.');
+console.log('Cool App Studio config, project, asset, and migration checks passed.');

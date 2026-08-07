@@ -4,6 +4,7 @@ import { request } from 'node:http';
 import { once } from 'node:events';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { chromium } from 'playwright';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const child = spawn(process.execPath, ['src/cli.mjs', '--port', '0', '--no-open'], {
@@ -11,12 +12,13 @@ const child = spawn(process.execPath, ['src/cli.mjs', '--port', '0', '--no-open'
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 let stderr = '';
+let browser;
 child.stderr.on('data', (chunk) => { stderr += chunk; });
 
 const serverUrl = await new Promise((resolveUrl, reject) => {
   const timer = setTimeout(() => reject(new Error(`Server test timed out. ${stderr}`)), 10_000);
   child.stdout.on('data', (chunk) => {
-    const match = chunk.toString().match(/App Screenshot Forge: (http:\/\/127\.0\.0\.1:\d+)/);
+    const match = chunk.toString().match(/Cool App Studio: (http:\/\/127\.0\.0\.1:\d+)/);
     if (!match) return;
     clearTimeout(timer);
     resolveUrl(match[1]);
@@ -52,12 +54,46 @@ try {
   const editor = await fetch(`${serverUrl}/`);
   assert.equal(editor.status, 200);
   const editorHtml = await editor.text();
+  assert.match(editorHtml, /<title>Cool App Studio<\/title>/);
+  assert.match(editorHtml, /<h1>Cool App Studio<\/h1>/);
+  assert.match(
+    editorHtml,
+    /accept="\.cool-app-studio,\.screenshot-forge,\.mockup-studio,application\/json,\.json"/,
+  );
   const capabilityMatch = editorHtml.match(
-    /<meta name="app-screenshot-forge-capability" content="([^"]+)">/,
+    /<meta name="cool-app-studio-capability" content="([^"]+)">/,
   );
   assert.ok(capabilityMatch, 'editor should receive a process capability token');
   const capabilityToken = capabilityMatch[1];
   assert.equal(capabilityToken.length, 64);
+
+  browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage({ acceptDownloads: true });
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      'app-screenshot-forge.project.v4',
+      JSON.stringify({ config: { headline: 'Legacy autosave restored' } }),
+    );
+  });
+  await page.goto(serverUrl);
+  await page.waitForFunction(() => window.studioReady === true);
+  assert.equal(await page.locator('#headlineInput').inputValue(), 'Legacy autosave restored');
+  assert.equal(
+    await page.evaluate(() => window.coolAppStudio === window.mockupStudio),
+    true,
+    'the renamed browser API should retain its legacy alias',
+  );
+  assert.deepEqual(
+    await page.evaluate(() => ({
+      canonical: Boolean(window.localStorage.getItem('cool-app-studio.project.v4')),
+      legacy: window.localStorage.getItem('app-screenshot-forge.project.v4'),
+    })),
+    { canonical: true, legacy: null },
+  );
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('#projectSaveButton').click();
+  const projectDownload = await downloadPromise;
+  assert.match(projectDownload.suggestedFilename(), /\.cool-app-studio$/);
 
   const health = await fetch(`${serverUrl}/health`);
   assert.equal(health.status, 200);
@@ -92,7 +128,7 @@ try {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-App-Screenshot-Forge-Capability': 'invalid',
+      'X-Cool-App-Studio-Capability': 'invalid',
     },
     body: '{}',
   });
@@ -102,7 +138,7 @@ try {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-App-Screenshot-Forge-Capability': capabilityToken,
+      'X-Cool-App-Studio-Capability': capabilityToken,
     },
     body: '{}',
   });
@@ -116,10 +152,11 @@ try {
   });
   assert.equal(invalidContentType.status, 415);
 } finally {
+  if (browser) await browser.close();
   if (child.exitCode === null) {
     child.kill('SIGTERM');
     await once(child, 'exit');
   }
 }
 
-console.log('App Screenshot Forge local-server security checks passed.');
+console.log('Cool App Studio local-server security checks passed.');

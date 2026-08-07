@@ -2,7 +2,7 @@
 
 Last verified: 2026-08-07
 
-App Screenshot Forge distributes only synthetic examples and documentation media.
+Cool App Studio distributes only synthetic examples and documentation media.
 It does not bundle third-party screenshots, logos, icon packs, or font files.
 Project-authored assets are offered under the repository's Apache-2.0 license.
 
@@ -34,10 +34,10 @@ Project-authored assets are offered under the repository's Apache-2.0 license.
 
 ### `docs/editor.png`
 
-- SHA-256: `c9916cf21cd490cc9d366b9bfacb8a00684b3495470ae5f35a08c1b55f8d39f7`
+- SHA-256: `2356c9bcae1e3e0a18becbfbd82cec22b5327cdc737ef064a989757617a31de8`
 - Origin: captured on 2026-08-07 from the local editor at 1600×1000 using only
   the built-in synthetic iPhone sample.
-- Content: current App Screenshot Forge branding, three-slide set, iPhone
+- Content: current Cool App Studio branding, three-slide set, iPhone
   6.9-inch target, exact all-panels crop view, and local-only status.
 - External inputs: none; the editor was served from `127.0.0.1` and no external
   integration was enabled.
@@ -66,10 +66,10 @@ Project-authored assets are offered under the repository's Apache-2.0 license.
 
 ### `docs/workflow.webm`
 
-- SHA-256: `9cd7bceb5bc18538269e2b2695af1cb29ab8cc23abf6e5559e226efbe8ff71e0`
+- SHA-256: `ea6db227a5e41da49659cd863adc4c3119e5b1283e79578dbae2cd9e8a5d094c`
 - Origin: recorded on 2026-08-07 from the local editor using only built-in
   synthetic samples.
-- Content: a 14.6-second, 1600×1000 VP8 recording that selects the iPhone
+- Content: a 15.1-second, 1600×1000 VP8 recording that selects the iPhone
   6.9-inch target, creates a three-slide set, opens the exact all-panels view,
   and completes a local set export.
 - External inputs: none; recording and rendering remained on `127.0.0.1`.
@@ -97,5 +97,5 @@ existing history becomes public.
   not copied device images. They contain no Apple, Google, or manufacturer logo.
 - Font choices name system stacks or accept a user-selected local font. No font
   binary is stored or distributed by the repository.
-- The square `M` brand mark is HTML text styled by the project, not an imported
+- The square `C` brand mark is HTML text styled by the project, not an imported
   icon or logo asset.

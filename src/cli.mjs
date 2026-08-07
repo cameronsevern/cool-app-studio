@@ -27,8 +27,8 @@ const examplesDirectory = resolve(projectRoot, 'examples');
 const renderJobs = new Map();
 const renderReadyTimeoutMs = 60_000;
 let browserPromise;
-const CAPABILITY_HEADER = 'x-app-screenshot-forge-capability';
-const CAPABILITY_TOKEN_PLACEHOLDER = '__APP_SCREENSHOT_FORGE_CAPABILITY_TOKEN__';
+const CAPABILITY_HEADER = 'x-cool-app-studio-capability';
+const CAPABILITY_TOKEN_PLACEHOLDER = '__COOL_APP_STUDIO_CAPABILITY_TOKEN__';
 const PROCESS_CAPABILITY_TOKEN = randomBytes(32).toString('hex');
 
 const SECURITY_HEADERS = {
@@ -598,9 +598,9 @@ async function serve(flags) {
   const requestedPort = Number(flags.port ?? 4312);
   const port = await listen(server, requestedPort, flags.port === undefined);
   const url = `http://127.0.0.1:${port}`;
-  console.log(`App Screenshot Forge: ${url}`);
+  console.log(`Cool App Studio: ${url}`);
   if (requestedPort !== 0 && port !== requestedPort) {
-    console.log(`Port ${requestedPort} was busy, so App Screenshot Forge selected ${port}.`);
+    console.log(`Port ${requestedPort} was busy, so Cool App Studio selected ${port}.`);
   }
   console.log('Local-only renderer. Nothing is uploaded. Press Ctrl+C to stop.');
   if (flags.open && !flags.noOpen) openUrl(url);
@@ -700,7 +700,7 @@ async function render(flags) {
     accent: flags.accent ?? fileConfig.accent ?? '#6ee7f5',
     showDevice: flags.noDevice ? false : (fileConfig.showDevice ?? true),
     fontFamily: fontDataUrl ? 'custom' : (flags.fontFamily ?? fileConfig.fontFamily ?? 'system'),
-    customFontName: flags.customFontName ?? fileConfig.customFontName ?? 'App Screenshot Forge Custom',
+    customFontName: flags.customFontName ?? fileConfig.customFontName ?? 'Cool App Studio Custom',
     textAlign: flags.textAlign ?? fileConfig.textAlign ?? 'left',
     autoTextColors: flags.manualTextColors ? false : (fileConfig.autoTextColors ?? true),
     headlineSize: numericFlag(flags, fileConfig, 'headlineSize', 102),
@@ -747,9 +747,9 @@ const rest = hasExplicitCommand ? commandLine.slice(1) : commandLine;
 const flags = parseFlags(rest);
 if (!hasExplicitCommand && !flags.noOpen) flags.open = true;
 const usage = `Usage:
-  app-screenshot-forge [--port 4312] [--no-open]
-  app-screenshot-forge serve [--port 4312] [--open]
-  app-screenshot-forge render --input screenshot.png --output mockup.png [options]
+  cool-app-studio [--port 4312] [--no-open]
+  cool-app-studio serve [--port 4312] [--open]
+  cool-app-studio render --input screenshot.png --output mockup.png [options]
 
 Render options:
   --config preset.json

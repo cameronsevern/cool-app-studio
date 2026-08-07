@@ -2,7 +2,7 @@
 
 ## Our standard
 
-We want participation in App Screenshot Forge to be safe, constructive, and welcoming.
+We want participation in Cool App Studio to be safe, constructive, and welcoming.
 Be respectful, assume good intent while responding to actual impact, give useful
 technical feedback, and make room for people with different backgrounds and
 levels of experience.

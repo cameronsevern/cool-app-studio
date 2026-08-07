@@ -1,16 +1,18 @@
-# App Screenshot Forge
+# Cool App Studio
 
-App Screenshot Forge is a local, parametric device renderer for polished product and
-store imagery. Drop in a screenshot, position an iPhone or Pixel-style device,
-set the copy and art direction, then export a deterministic PNG without sending
-the screenshot to a third-party service.
+Cool App Studio is a local-first editor for polished App Store and Google Play
+screenshots. Drop in a capture, position an iPhone or Pixel-style device, set the
+copy and art direction, then export deterministic PNGs without sending private
+assets to a third-party service.
+
+A Cool S Technologies project.
 
 The project is preparing for a public `0.1.0` alpha. See the ordered
 [product and distribution roadmap](ROADMAP.md), [privacy boundaries](PRIVACY.md),
 and [contribution guide](CONTRIBUTING.md). Support expectations are documented
 in [SUPPORT.md](SUPPORT.md).
 
-![App Screenshot Forge editor](docs/editor.png)
+![Cool App Studio editor](docs/editor.png)
 
 [Watch the 15-second local multi-slide workflow](docs/workflow.webm).
 
@@ -39,11 +41,11 @@ After the public `0.1.0` package is available on npm, the equivalent one-off
 command will be:
 
 ```sh
-npx app-screenshot-forge
+npx cool-app-studio
 ```
 
 To start the packaged server without opening a browser, use
-`npx app-screenshot-forge --no-open` and visit the printed address manually.
+`npx cool-app-studio --no-open` and visit the printed address manually.
 
 If rendering reports that no browser executable is available, install
 Playwright's Chromium and launch the editor again:
@@ -52,11 +54,11 @@ Playwright's Chromium and launch the editor again:
 npx playwright install chromium
 ```
 
-Then rerun `npm start` from a source checkout or `npx app-screenshot-forge`
+Then rerun `npm start` from a source checkout or `npx cool-app-studio`
 after package publication.
 
 If you installed a persistent global command instead of using `npx`, remove it
-with `npm uninstall --global app-screenshot-forge`. The project does not install
+with `npm uninstall --global cool-app-studio`. The project does not install
 a background service or retain screenshots outside files you explicitly save.
 
 ## Interactive workflow
@@ -113,8 +115,9 @@ font stacks plus local WOFF2, WOFF, TTF, and OTF files.
 Selected screenshots, backgrounds, and font files stay in memory and are sent
 only to the renderer bound to `127.0.0.1`. **Save preset** retains styling and
 filename hints without asset bytes. **Save project** deliberately creates a
-portable `.screenshot-forge` JSON bundle containing only the local assets currently
-used by the set, so it can be reopened without reselecting them.
+portable `.cool-app-studio` JSON bundle containing only the local assets currently
+used by the set, so it can be reopened without reselecting them. Projects saved
+as `.screenshot-forge` or `.mockup-studio` remain importable.
 
 The editor remembers project metadata in local browser storage but does not
 persist asset bytes there. After a browser restart, reopen the project bundle or
@@ -208,7 +211,7 @@ validated.
 
 ## Open source
 
-App Screenshot Forge is licensed under [Apache-2.0](LICENSE). Please read
+Cool App Studio is licensed under [Apache-2.0](LICENSE). Please read
 [CONTRIBUTING.md](CONTRIBUTING.md) before proposing a change and use the private
 process in [SECURITY.md](SECURITY.md) for security or privacy reports.
 Bundled and historical media provenance is recorded in

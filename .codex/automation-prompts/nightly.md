@@ -1,4 +1,4 @@
-# App Screenshot Forge Nightly Product Loop
+# Cool App Studio Nightly Product Loop
 
 Run one bounded nightly product iteration in this saved local checkout.
 
