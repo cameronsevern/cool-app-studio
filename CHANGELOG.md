@@ -17,6 +17,8 @@ Semantic Versioning after its first public release.
 - Prepared the unpublished npm package as a `0.1.0` public alpha targeting
   supported Node.js LTS releases.
 - Restricted npm package contents to runtime source and examples.
+- Allow slower clean machines up to 60 seconds to finish browser renders before
+  reporting a timeout.
 
 ### Product work in progress
 

@@ -25,6 +25,7 @@ const projectRoot = resolve(toolDirectory, '..');
 const studioDirectory = resolve(toolDirectory, 'studio');
 const examplesDirectory = resolve(projectRoot, 'examples');
 const renderJobs = new Map();
+const renderReadyTimeoutMs = 60_000;
 let browserPromise;
 const CAPABILITY_HEADER = 'x-app-screenshot-forge-capability';
 const CAPABILITY_TOKEN_PLACEHOLDER = '__APP_SCREENSHOT_FORGE_CAPABILITY_TOKEN__';
@@ -254,7 +255,7 @@ async function renderBuffer(baseUrl, config, assets) {
       waitUntil: 'networkidle',
     });
     await page.waitForFunction(() => window.renderReady || window.renderError, null, {
-      timeout: 15_000,
+      timeout: renderReadyTimeoutMs,
     });
     const renderError = await page.evaluate(() => window.renderError ?? null);
     if (renderError) throw new Error(renderError);
@@ -305,7 +306,7 @@ async function renderSpanBuffers(baseUrl, items, assetData, spanDevice) {
       waitUntil: 'networkidle',
     });
     await page.waitForFunction(() => window.renderReady || window.renderError, null, {
-      timeout: 20_000,
+      timeout: renderReadyTimeoutMs,
     });
     const renderError = await page.evaluate(() => window.renderError ?? null);
     if (renderError) throw new Error(renderError);
