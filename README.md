@@ -12,6 +12,8 @@ in [SUPPORT.md](SUPPORT.md).
 
 ![App Screenshot Forge editor](docs/editor.png)
 
+[Watch the 15-second local multi-slide workflow](docs/workflow.webm).
+
 <details>
 <summary>Example exported composition</summary>
 
@@ -187,3 +189,5 @@ validated.
 App Screenshot Forge is licensed under [Apache-2.0](LICENSE). Please read
 [CONTRIBUTING.md](CONTRIBUTING.md) before proposing a change and use the private
 process in [SECURITY.md](SECURITY.md) for security or privacy reports.
+Bundled and historical media provenance is recorded in
+[docs/ASSET_PROVENANCE.md](docs/ASSET_PROVENANCE.md).

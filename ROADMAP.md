@@ -89,8 +89,10 @@ repository becomes public.
   explicitly approve a private-history rewrite and force-push to replace it.
   **Human/privacy/history-rewrite gate.**
 - [ ] Verify the origin and redistribution rights of every sample, screenshot,
-  icon, font, device reference, and documentation image. **Human/legal gate.**
-- [ ] Refresh the editor screenshot and add a short current workflow recording.
+  icon, font, device reference, and documentation image. The complete
+  [asset inventory](docs/ASSET_PROVENANCE.md) is ready for maintainer
+  confirmation. **Human/legal gate.**
+- [x] Refresh the editor screenshot and add a short current workflow recording.
 - [ ] Prove a clean install and full export on fresh macOS, Windows, and Linux
   environments through hosted CI or equivalent machines.
 
