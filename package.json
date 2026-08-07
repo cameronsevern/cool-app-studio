@@ -41,7 +41,7 @@
     "prepublishOnly": "npm test"
   },
   "dependencies": {
-    "playwright": "^1.61.1"
+    "playwright": "^1.62.1"
   },
   "engines": {
     "node": ">=22"
