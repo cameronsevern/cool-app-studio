@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="cool-app-studio-capability" content="__COOL_APP_STUDIO_CAPABILITY_TOKEN__">
+    <title>Cool App Studio Set Render</title>
+    <link rel="stylesheet" href="/scene.css">
+    <style>
+      html,
+      body,
+      #setCanvas {
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+      }
+
+      #setCanvas {
+        position: relative;
+      }
+
+      .panel-frame,
+      .span-layer {
+        position: absolute;
+        top: 0;
+      }
+
+      .span-layer {
+        z-index: 2;
+        background: transparent !important;
+      }
+
+      .span-layer .scene-background-image,
+      .span-layer .scene-background-overlay,
+      .span-layer .scene-glow,
+      .span-layer .scene-ring,
+      .span-layer .scene-spectrum,
+      .span-layer .copy-block {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="setCanvas"></main>
+    <template id="sceneTemplate">
+      <div class="export-frame">
+        <img class="scene-background-image" alt="" hidden>
+        <div class="scene-background-overlay"></div>
+        <div class="scene-glow"></div>
+        <div class="scene-ring"></div>
+        <div class="scene-spectrum"></div>
+        <section class="copy-block">
+          <p class="copy-kicker"></p>
+          <h1 class="copy-headline"></h1>
+          <p class="copy-subhead"></p>
+        </section>
+        <section class="device-stage">
+          <div class="device-shadow"></div>
+          <div class="phone-rig">
+            <div class="phone-plane phone-back"></div>
+            <div class="phone-side phone-side-left"></div>
+            <div class="phone-side phone-side-right"></div>
+            <div class="phone-side phone-side-top"></div>
+            <div class="phone-side phone-side-bottom"></div>
+            <div class="phone-plane phone-front">
+              <div class="phone-screen"><img alt="App screenshot"></div>
+              <div class="phone-glass"></div>
+              <div class="phone-island"></div>
+              <div class="phone-button phone-button-power"></div>
+              <div class="phone-button phone-button-volume-up"></div>
+              <div class="phone-button phone-button-volume-down"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </template>
+    <script src="/scene.js"></script>
+    <script>
+      (async () => {
+        const job = new URLSearchParams(window.location.search).get('job');
+        const capabilityToken = document.querySelector(
+          'meta[name="cool-app-studio-capability"]',
+        )?.content;
+        const canvas = document.getElementById('setCanvas');
+        const template = document.getElementById('sceneTemplate');
+
+        function createFrame() {
+          return template.content.firstElementChild.cloneNode(true);
+        }
+
+        function itemAssets(item, assetData) {
+          return {
+            screenImageUrl: assetData[item.screenshotAssetId] ?? '',
+            backgroundImageUrl: item.backgroundAssetId
+              ? (assetData[item.backgroundAssetId] ?? '')
+              : '',
+            fontDataUrl: item.fontAssetId ? (assetData[item.fontAssetId] ?? '') : '',
+          };
+        }
+
+        async function decodeImage(dataUrl) {
+          if (!dataUrl || !dataUrl.startsWith('data:image/')) return;
+          const image = new Image();
+          image.decoding = 'sync';
+          image.src = dataUrl;
+          await image.decode();
+        }
+
+        try {
+          const response = await fetch(`/api/job/${encodeURIComponent(job)}`, {
+            headers: { 'X-Cool-App-Studio-Capability': capabilityToken },
+          });
+          if (!response.ok) throw new Error(`Set render job failed: ${response.status}`);
+          const payload = await response.json();
+          const items = payload.items;
+          const span = payload.spanDevice;
+          const assetData = payload.assets ?? {};
+          const width = Number(items[0].config.width);
+          const height = Number(items[0].config.height);
+          const totalWidth = width * items.length;
+          document.documentElement.style.width = `${totalWidth}px`;
+          document.documentElement.style.height = `${height}px`;
+          document.body.style.width = `${totalWidth}px`;
+          document.body.style.height = `${height}px`;
+          canvas.style.width = `${totalWidth}px`;
+          canvas.style.height = `${height}px`;
+
+          const dataUrls = new Set();
+          for (const item of items) {
+            const resolved = itemAssets(item, assetData);
+            if (resolved.screenImageUrl) dataUrls.add(resolved.screenImageUrl);
+            if (resolved.backgroundImageUrl) dataUrls.add(resolved.backgroundImageUrl);
+          }
+          await Promise.all([...dataUrls].map(decodeImage));
+
+          const sharedFont = itemAssets(items[0], assetData).fontDataUrl;
+          if (sharedFont) {
+            const fontName = items[0].config.customFontName ?? 'Cool App Studio Custom';
+            const font = new FontFace(fontName, `url(${sharedFont})`);
+            document.fonts.add(await font.load());
+          }
+
+          for (const [index, item] of items.entries()) {
+            const panel = createFrame();
+            panel.classList.add('panel-frame');
+            panel.style.left = `${index * width}px`;
+            MockupScene.applyScene(
+              panel,
+              { ...item.config, showDevice: false },
+              itemAssets(item, assetData),
+            );
+            canvas.append(panel);
+          }
+
+          const sourceItem = items[span.sourceIndex];
+          const overlay = createFrame();
+          overlay.classList.add('span-layer');
+          MockupScene.applyScene(
+            overlay,
+            {
+              ...sourceItem.config,
+              width,
+              height,
+              background: 'transparent',
+              showDevice: true,
+              preset: 'custom',
+              x: 0,
+              y: span.y,
+              scale: span.scale,
+              rotateX: span.rotateX,
+              rotateY: span.rotateY,
+              rotateZ: span.rotateZ,
+            },
+            itemAssets(sourceItem, assetData),
+          );
+          overlay.style.left = '0';
+          overlay.style.width = `${totalWidth}px`;
+          overlay.style.height = `${height}px`;
+          overlay.style.setProperty('--translate-x', `${(span.x - 0.5) * totalWidth}px`);
+          canvas.append(overlay);
+
+          await document.fonts.ready;
+          await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          window.renderReady = true;
+        } catch (error) {
+          window.renderError = error.message;
+          document.body.dataset.renderError = error.message;
+        }
+      })();
+    </script>
+  </body>
+</html>

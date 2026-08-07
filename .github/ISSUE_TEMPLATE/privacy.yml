@@ -1,0 +1,26 @@
+name: Privacy question
+description: Ask about local data handling without disclosing private assets.
+title: "[Privacy]: "
+labels:
+  - privacy
+body:
+  - type: markdown
+    attributes:
+      value: Use private vulnerability reporting for suspected exposure or a security defect.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Do not attach screenshots, projects, fonts, credentials, or other private files.
+    validations:
+      required: true
+  - type: dropdown
+    id: security
+    attributes:
+      label: Is this a suspected vulnerability or exposure?
+      options:
+        - "No"
+        - "Unsure"
+        - "Yes — I will use private vulnerability reporting"
+    validations:
+      required: true

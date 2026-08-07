@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Private security or privacy report
+    url: https://github.com/cameronsevern/mockup-studio/security/advisories/new
+    about: Do not put vulnerabilities or private assets in a public issue.

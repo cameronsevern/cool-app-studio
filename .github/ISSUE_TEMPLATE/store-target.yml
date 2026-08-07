@@ -1,0 +1,37 @@
+name: Store target drift
+description: Report a changed App Store or Google Play image requirement.
+title: "[Store target]: "
+labels:
+  - documentation
+body:
+  - type: dropdown
+    id: store
+    attributes:
+      label: Store
+      options:
+        - Apple App Store
+        - Google Play
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: official_source
+    attributes:
+      label: First-party documentation URL
+      description: Link directly to the platform owner's current requirement.
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: Requirement change
+      description: Include affected dimensions, formats, devices, regions, and effective date.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Cool App Studio impact
+      description: Which preset, validation, documentation, or test is affected?
+    validations:
+      required: true

@@ -1,0 +1,52 @@
+name: Bug report
+description: Report reproducible editor, CLI, project, or export behavior.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Do not attach confidential screenshots, fonts, projects, or credentials.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: What happened?
+      description: Describe the observed result and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Use synthetic assets when possible and list exact steps or CLI flags.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+      placeholder: 0.1.0 or full commit SHA
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: macOS 15, Node 24.9, Chrome 140
+    validations:
+      required: true
+  - type: dropdown
+    id: data_loss
+    attributes:
+      label: Did this lose or expose project data?
+      options:
+        - "No"
+        - "Possibly"
+        - "Yes — I will use private vulnerability reporting"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs or output
+      render: shell
