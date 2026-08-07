@@ -82,9 +82,12 @@ repository becomes public.
   browser security headers.
 - [x] Add a per-process capability token to sensitive local render endpoints and
   verify that ordinary browser use, CLI rendering, and tests still work.
-- [ ] Perform a full history and secret scan before visibility changes. The
-  current lightweight text scan found no credential-shaped strings, but this is
-  not the final publication audit.
+- [x] Perform a full history and secret scan before visibility changes. The
+  2026-08-07 [publication audit](docs/PUBLICATION_AUDIT.md) scanned all refs,
+  reflogs, the working tree, and 18 unreachable blobs with zero secret findings.
+- [ ] Confirm that the existing non-noreply commit author email may be public, or
+  explicitly approve a private-history rewrite and force-push to replace it.
+  **Human/privacy/history-rewrite gate.**
 - [ ] Verify the origin and redistribution rights of every sample, screenshot,
   icon, font, device reference, and documentation image. **Human/legal gate.**
 - [ ] Refresh the editor screenshot and add a short current workflow recording.
