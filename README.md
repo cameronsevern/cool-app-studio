@@ -12,7 +12,7 @@ The project is preparing for a public `0.1.0` alpha. See the ordered
 and [contribution guide](CONTRIBUTING.md). Support expectations are documented
 in [SUPPORT.md](SUPPORT.md).
 
-![Cool App Studio editor](docs/editor.png)
+![Cool App Studio multi-slide editor](docs/editor.png)
 
 [Watch the 15-second local multi-slide workflow](docs/workflow.webm).
 
@@ -60,6 +60,20 @@ after package publication.
 If you installed a persistent global command instead of using `npx`, remove it
 with `npm uninstall --global cool-app-studio`. The project does not install
 a background service or retain screenshots outside files you explicitly save.
+
+## First export in one minute
+
+Once the editor is open, the built-in **Demo screenshot** is ready for a local
+first export:
+
+1. In **Canvas**, choose a store target such as **iPhone 6.9″ · 1320 × 2868**.
+2. In **Copy & typography**, replace the headline and subhead with your own
+   copy. Controls marked **Shared** update the set; **This slide** controls
+   affect only the selected slide.
+3. Click **Export PNG** to download the current slide, or use **+ Add** or
+   **Duplicate** and then **Export set** to download an ordered ZIP of the set.
+4. When you are ready to use a real capture, click **Choose screenshot** and
+   select a local PNG, JPEG, WebP, or SVG. The file stays on your machine.
 
 ## Interactive workflow
 

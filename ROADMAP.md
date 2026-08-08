@@ -132,7 +132,7 @@ project without calling it production-ready.
   and browser-install recovery. The implicit-server path is covered by the
   local-server test, supports `--no-open` for headless use, and was verified
   from a packed `0.1.0` tarball before publication.
-- [ ] Replace stale documentation imagery with the multi-slide workflow and a
+- [x] Replace stale documentation imagery with the multi-slide workflow and a
   one-minute first-export guide.
 - [x] Add focused issue forms for bugs, feature requests, store-target drift, and
   privacy/security questions.
