@@ -31,6 +31,11 @@ npx playwright install chromium
 
 ## Verification
 
+For reproducible render work, follow the
+[supported renderer contract](docs/RENDERER_CONTRACT.md). In particular, use
+the lockfile and the Playwright-managed Chromium baseline rather than treating
+an installed system browser or system font as pixel-equivalent.
+
 Run before submitting a change:
 
 ```sh

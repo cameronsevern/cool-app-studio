@@ -1,6 +1,6 @@
 # Cool App Studio Roadmap
 
-Last updated: 2026-08-07
+Last updated: 2026-08-09
 
 This file is the ordered product and release queue for maintainers and the
 nightly product loop. It describes the intended outcome, the boundaries that
@@ -153,8 +153,10 @@ Exit criteria:
 Goal: make saved work resilient and make “deterministic” a precise, testable
 claim rather than a general aspiration.
 
-- [ ] Define the supported renderer contract: pinned Chromium version, fonts,
-  color profile, operating-system expectations, and permitted variance.
+- [x] Define the supported renderer contract: pinned Chromium version, fonts,
+  color profile, operating-system expectations, and permitted variance. The
+  initial contract is recorded in [docs/RENDERER_CONTRACT.md](docs/RENDERER_CONTRACT.md)
+  and checked against the lockfile, runtime launch settings, and CI matrix.
 - [ ] Prefer the pinned renderer for reproducible work and make any system-browser
   fallback explicit in output metadata.
 - [ ] Add repeat-render tests and visual regression fixtures for representative

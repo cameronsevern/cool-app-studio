@@ -148,6 +148,11 @@ or used by the CLI.
 
 ## Deterministic CLI renders
 
+The supported renderer baseline and the exactness limits for fonts, operating
+systems, color, and browser selection are documented in the
+[renderer contract](docs/RENDERER_CONTRACT.md). Use `npm ci` and the pinned
+Playwright-managed Chromium baseline for reproducible work.
+
 ```sh
 node src/cli.mjs render \
   --input examples/sample-pixel.svg \
