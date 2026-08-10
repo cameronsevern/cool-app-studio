@@ -157,8 +157,10 @@ claim rather than a general aspiration.
   color profile, operating-system expectations, and permitted variance. The
   initial contract is recorded in [docs/RENDERER_CONTRACT.md](docs/RENDERER_CONTRACT.md)
   and checked against the lockfile, runtime launch settings, and CI matrix.
-- [ ] Prefer the pinned renderer for reproducible work and make any system-browser
-  fallback explicit in output metadata.
+- [x] Prefer the pinned renderer for reproducible work and make any system-browser
+  fallback explicit in output metadata. The CLI prefers the Playwright-managed
+  Chromium and writes a `.png.json` sidecar with renderer selection, browser
+  versions, reproducibility status, dimensions, and the PNG hash.
 - [ ] Add repeat-render tests and visual regression fixtures for representative
   devices, fonts, backgrounds, transparent output, and spanning sets.
 - [ ] Add `cool-app-studio doctor` to report Node, browser, renderer, platform,

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdir, readFile, rm } from 'node:fs/promises';
@@ -71,10 +72,20 @@ for (const render of renders) {
   );
 
   const png = await readFile(output);
+  const metadata = JSON.parse(await readFile(`${output}.json`, 'utf8'));
   assert.equal(png.subarray(1, 4).toString('ascii'), 'PNG');
   assert.equal(png.readUInt32BE(16), render.width, `${render.name} width`);
   assert.equal(png.readUInt32BE(20), render.height, `${render.name} height`);
   assert.ok(png.length > 50_000, `${render.name} should contain a real composition`);
+  assert.equal(metadata.schemaVersion, 1);
+  assert.equal(metadata.output.format, 'png');
+  assert.equal(metadata.output.width, render.width);
+  assert.equal(metadata.output.height, render.height);
+  assert.match(metadata.output.sha256, /^[a-f0-9]{64}$/);
+  assert.equal(metadata.output.sha256, createHash('sha256').update(png).digest('hex'));
+  assert.ok(['pinned', 'system-fallback', 'system-override'].includes(metadata.renderer.selection));
+  assert.equal(typeof metadata.renderer.browserVersion, 'string');
+  assert.equal(metadata.renderer.reproducible, metadata.renderer.selection === 'pinned');
 }
 
 await rm(tempDirectory, { recursive: true, force: true });

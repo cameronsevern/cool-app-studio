@@ -24,6 +24,9 @@ Semantic Versioning after its first public release.
   reporting a timeout.
 - Made the argument-free `npx cool-app-studio` path open the local editor,
   with a headless `--no-open` option and actionable browser recovery guidance.
+- Prefer the pinned Playwright-managed Chromium for renders and write renderer
+  selection metadata beside each CLI PNG, including explicit system-browser
+  fallback and override states.
 
 ### Product work in progress
 

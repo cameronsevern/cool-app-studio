@@ -189,6 +189,11 @@ node src/cli.mjs render \
   --headline "A clearer daily rhythm."
 ```
 
+Every CLI PNG is accompanied by a sibling `.png.json` sidecar containing the
+renderer selection, reproducibility status, browser versions, dimensions, and
+PNG hash. The CLI prefers its pinned Playwright-managed Chromium; if it must use
+a system browser, the sidecar records that choice explicitly.
+
 Run `node src/cli.mjs help` for the complete option list. Output dimensions can
 range from 320 to 4096 pixels per side. `--transparent` creates a reusable
 device-only layer, and `--noDevice` creates a text-led composition.
@@ -203,7 +208,9 @@ device-only layer, and `--noDevice` creates a text-led composition.
 - Screenshot, background, and font data is read into memory for preview and
   rendering; it is not written by the server or uploaded.
 - Export jobs are removed from memory when the render finishes.
-- `CHROME_PATH` can point to a specific Chromium-family browser.
+- The pinned Playwright-managed Chromium is preferred. `CHROME_PATH` can
+  explicitly select a compatibility browser, and CLI metadata labels that
+  output `system-override`.
 
 Portable project bundles deliberately contain the local assets used by the
 project. Treat them as sensitive if the screenshots, fonts, logos, or backgrounds

@@ -33,12 +33,12 @@ pixel-identical reference machine.
 
 ## Browser selection boundary
 
-The pinned Playwright-managed browser is the only browser covered by the
-reproducibility promise. The current runtime still accepts `CHROME_PATH` and
-checks known Chrome, Brave, Edge, and Chromium locations for compatibility.
-Those system-browser paths are functional fallbacks, but their output is not
-covered by the byte-equality promise until browser selection and output
-metadata make that fallback explicit in a later R2 slice.
+The runtime prefers the pinned Playwright-managed browser whenever it is
+installed. If it is unavailable, the runtime checks known Chrome, Brave, Edge,
+and Chromium locations and records `system-fallback` in CLI output metadata.
+Setting `CHROME_PATH` intentionally selects a compatibility browser and records
+`system-override`; pointing it at the managed executable remains `pinned`.
+System-browser output is not covered by the byte-equality promise.
 
 To run a local reproducibility check against the reference executable, point
 `CHROME_PATH` at the path printed by:
@@ -46,6 +46,12 @@ To run a local reproducibility check against the reference executable, point
 ```sh
 node -e "const { chromium } = require('playwright'); console.log(chromium.executablePath())"
 ```
+
+Each CLI PNG also receives a sibling `<output>.json` sidecar containing the
+renderer selection (`pinned`, `system-fallback`, or `system-override`), whether
+the output is covered by the reproducibility promise, the Playwright and browser
+versions, output dimensions, and the PNG SHA-256. The sidecar contains metadata
+only; screenshots and other assets remain local.
 
 ## Fonts and input assets
 

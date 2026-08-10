@@ -9,13 +9,16 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { homedir, platform } from 'node:os';
 import { dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { selectRenderer } from './renderer.mjs';
 import { createZip } from './zip.mjs';
 
 const require = createRequire(import.meta.url);
 let playwright;
 let playwrightImportError;
+let playwrightVersion;
 try {
   playwright = require('playwright');
+  playwrightVersion = require('playwright/package.json').version;
 } catch (error) {
   playwrightImportError = error;
 }
@@ -27,6 +30,7 @@ const examplesDirectory = resolve(projectRoot, 'examples');
 const renderJobs = new Map();
 const renderReadyTimeoutMs = 60_000;
 let browserPromise;
+let rendererSelection;
 const CAPABILITY_HEADER = 'x-cool-app-studio-capability';
 const CAPABILITY_TOKEN_PLACEHOLDER = '__COOL_APP_STUDIO_CAPABILITY_TOKEN__';
 const PROCESS_CAPABILITY_TOKEN = randomBytes(32).toString('hex');
@@ -213,9 +217,15 @@ function browserCandidates() {
   ];
 }
 
-function findBrowserExecutable() {
-  if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
-  return browserCandidates().find((candidate) => existsSync(candidate));
+function getRendererSelection() {
+  if (rendererSelection) return rendererSelection;
+  rendererSelection = selectRenderer({
+    managedPath: playwright.chromium.executablePath(),
+    overridePath: process.env.CHROME_PATH,
+    systemPaths: browserCandidates(),
+    isAvailable: existsSync,
+  });
+  return rendererSelection;
 }
 
 async function getBrowser() {
@@ -225,13 +235,31 @@ async function getBrowser() {
         `(Original error: ${playwrightImportError?.message ?? 'module unavailable'})`,
     );
   }
-  const executablePath = findBrowserExecutable();
+  const selection = getRendererSelection();
+  if (selection.mode === 'unavailable') {
+    throw new Error(
+      `${selection.reason}. Run npx playwright install chromium or set CHROME_PATH to a Chromium-family browser.`,
+    );
+  }
   browserPromise ??= playwright.chromium.launch({
     headless: true,
-    ...(executablePath ? { executablePath } : {}),
+    executablePath: selection.executablePath,
     args: ['--hide-scrollbars', '--force-color-profile=srgb'],
   });
   return browserPromise;
+}
+
+async function getRendererMetadata() {
+  const browser = await getBrowser();
+  const selection = getRendererSelection();
+  return {
+    selection: selection.mode,
+    fallback: selection.fallback,
+    reproducible: selection.mode === 'pinned',
+    reason: selection.reason,
+    playwrightVersion,
+    browserVersion: browser.version(),
+  };
 }
 
 function clampDimension(value, fallback = 1600) {
@@ -573,6 +601,7 @@ async function listen(server, port, fallbackToAvailable = false) {
 async function closeResources(server) {
   if (browserPromise) await (await browserPromise).close();
   browserPromise = undefined;
+  rendererSelection = undefined;
   if (server.listening) {
     await new Promise((resolveClose) => server.close(resolveClose));
   }
@@ -730,11 +759,28 @@ async function render(flags) {
   const port = await listen(server, 0);
   try {
     const png = await renderBuffer(`http://127.0.0.1:${port}`, config, assets);
+    const renderer = await getRendererMetadata();
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, png);
     const sha256 = createHash('sha256').update(png).digest('hex');
+    const metadataPath = `${outputPath}.json`;
+    await writeFile(
+      metadataPath,
+      `${JSON.stringify({
+        schemaVersion: 1,
+        renderer,
+        output: {
+          format: 'png',
+          width: clampDimension(config.width),
+          height: clampDimension(config.height),
+          sha256,
+        },
+      }, null, 2)}\n`,
+    );
     console.log(`Rendered ${outputPath} (${config.width}×${config.height})`);
     console.log(`SHA-256 ${sha256}`);
+    console.log(`Renderer ${renderer.selection} (${renderer.browserVersion})`);
+    console.log(`Metadata ${metadataPath}`);
   } finally {
     await closeResources(server);
   }
