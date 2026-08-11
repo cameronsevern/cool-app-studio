@@ -61,6 +61,13 @@
           image.src = dataUrl;
           await image.decode();
         }
+        async function decodeMountedImages() {
+          await Promise.all(
+            [...document.images]
+              .filter((image) => image.src)
+              .map((image) => image.decode()),
+          );
+        }
         try {
           const response = await fetch(`/api/job/${encodeURIComponent(job)}`, {
             headers: { 'X-Cool-App-Studio-Capability': capabilityToken },
@@ -82,6 +89,7 @@
             payload.config,
             assets,
           );
+          await decodeMountedImages();
           await document.fonts.ready;
           await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
           window.renderReady = true;

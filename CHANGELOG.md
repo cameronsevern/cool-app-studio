@@ -11,6 +11,8 @@ Semantic Versioning after its first public release.
 - Open-source contribution, conduct, security, and privacy documentation.
 - Cross-platform CI and dependency-update configuration.
 - Loopback host/origin validation and browser security headers.
+- Same-environment visual-repeat fixtures for representative scenes,
+  transparent output, and spanning-set crops.
 
 ### Changed
 
@@ -27,6 +29,8 @@ Semantic Versioning after its first public release.
 - Prefer the pinned Playwright-managed Chromium for renders and write renderer
   selection metadata beside each CLI PNG, including explicit system-browser
   fallback and override states.
+- Stabilize pinned 3D crops by using software compositing, waiting for mounted
+  local images, and priming the continuous render surface before panel clips.
 
 ### Product work in progress
 

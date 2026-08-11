@@ -54,6 +54,7 @@ for (const value of [
 assert.match(cli, /headless:\s*true/);
 assert.match(cli, /'--hide-scrollbars'/);
 assert.match(cli, /'--force-color-profile=srgb'/);
+assert.match(cli, /'--disable-gpu'/);
 assert.match(cli, /deviceScaleFactor:\s*1/);
 for (const extension of ['.woff2', '.woff', '.ttf', '.otf']) {
   assert.match(cli, new RegExp(`'${extension.replace('.', '\\.')}'`));

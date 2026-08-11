@@ -1,0 +1,220 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "iphone-gradient-system",
+      "config": {
+        "width": 640,
+        "height": 960,
+        "device": "iphone",
+        "shell": "silver",
+        "background": "gradient",
+        "backgroundColorA": "#101c2b",
+        "backgroundColorB": "#56436f",
+        "backgroundAngle": 118,
+        "fontFamily": "system",
+        "preset": "hero-right",
+        "headline": "Repeatable iPhone",
+        "subhead": "One local scene, rendered twice."
+      },
+      "assets": {
+        "screenshot": "examples/sample-iphone.svg"
+      },
+      "expected": {
+        "width": 640,
+        "height": 960,
+        "alpha": "opaque",
+        "minBytes": 20000,
+        "minOpaquePixels": 1000,
+        "anchors": [
+          { "x": 0.02, "y": 0.02, "rgba": [17, 29, 44, 255] },
+          { "x": 0.98, "y": 0.02, "rgba": [59, 62, 92, 255] },
+          { "x": 0.02, "y": 0.98, "rgba": [48, 46, 74, 255] },
+          { "x": 0.98, "y": 0.98, "rgba": [78, 62, 102, 255] },
+          { "x": 0.92, "y": 0.12, "rgba": [60, 67, 97, 255] },
+          { "x": 0.5, "y": 0.9, "rgba": [4, 12, 17, 255] }
+        ]
+      }
+    },
+    {
+      "id": "pixel-studio-serif",
+      "config": {
+        "width": 720,
+        "height": 960,
+        "device": "pixel",
+        "shell": "gold",
+        "background": "studio",
+        "fontFamily": "serif",
+        "preset": "floating",
+        "headline": "Repeatable Pixel",
+        "subhead": "A light canvas with a local font stack."
+      },
+      "assets": {
+        "screenshot": "examples/sample-pixel.svg"
+      },
+      "expected": {
+        "width": 720,
+        "height": 960,
+        "alpha": "opaque",
+        "minBytes": 20000,
+        "minOpaquePixels": 1000,
+        "anchors": [
+          { "x": 0.02, "y": 0.02, "rgba": [5, 12, 16, 255] },
+          { "x": 0.98, "y": 0.02, "rgba": [25, 52, 60, 255] },
+          { "x": 0.02, "y": 0.98, "rgba": [12, 24, 32, 255] },
+          { "x": 0.98, "y": 0.98, "rgba": [16, 32, 42, 255] },
+          { "x": 0.92, "y": 0.12, "rgba": [32, 67, 78, 255] },
+          { "x": 0.5, "y": 0.9, "rgba": [124, 216, 214, 255] }
+        ]
+      }
+    },
+    {
+      "id": "pixel-image-mono",
+      "config": {
+        "width": 900,
+        "height": 450,
+        "device": "pixel",
+        "shell": "cyan",
+        "background": "image",
+        "backgroundImageFit": "cover",
+        "backgroundImageX": 42,
+        "backgroundImageY": 58,
+        "backgroundImageZoom": 1.08,
+        "backgroundImageBlur": 1,
+        "backgroundOverlay": "#081117",
+        "backgroundOverlayOpacity": 0.35,
+        "fontFamily": "mono",
+        "preset": "upright",
+        "headline": "Image-backed feature",
+        "subhead": "The background remains local."
+      },
+      "assets": {
+        "screenshot": "examples/sample-pixel.svg",
+        "background": "examples/sample-iphone.svg"
+      },
+      "expected": {
+        "width": 900,
+        "height": 450,
+        "alpha": "opaque",
+        "minBytes": 20000,
+        "minOpaquePixels": 1000,
+        "anchors": [
+          { "x": 0.02, "y": 0.02, "rgba": [8, 19, 25, 255] },
+          { "x": 0.98, "y": 0.02, "rgba": [9, 17, 23, 255] },
+          { "x": 0.02, "y": 0.98, "rgba": [6, 15, 21, 255] },
+          { "x": 0.98, "y": 0.98, "rgba": [14, 24, 30, 255] },
+          { "x": 0.92, "y": 0.12, "rgba": [9, 17, 23, 255] },
+          { "x": 0.5, "y": 0.9, "rgba": [5, 13, 19, 255] }
+        ]
+      }
+    },
+    {
+      "id": "iphone-transparent-geometric",
+      "config": {
+        "width": 640,
+        "height": 960,
+        "device": "iphone",
+        "shell": "graphite",
+        "background": "transparent",
+        "fontFamily": "geometric",
+        "preset": "low-angle",
+        "headline": "Transparent device",
+        "subhead": "A reusable local layer."
+      },
+      "assets": {
+        "screenshot": "examples/sample-iphone.svg"
+      },
+      "expected": {
+        "width": 640,
+        "height": 960,
+        "alpha": "transparent",
+        "minBytes": 10000,
+        "minOpaquePixels": 1000,
+        "anchors": [
+          { "x": 0.02, "y": 0.02, "rgba": [0, 0, 0, 0] },
+          { "x": 0.98, "y": 0.02, "rgba": [0, 0, 0, 0] },
+          { "x": 0.02, "y": 0.98, "rgba": [0, 0, 0, 0] },
+          { "x": 0.98, "y": 0.98, "rgba": [0, 0, 0, 11] },
+          { "x": 0.92, "y": 0.12, "rgba": [0, 0, 0, 0] },
+          { "x": 0.5, "y": 0.9, "rgba": [13, 23, 29, 255] }
+        ]
+      }
+    }
+  ],
+  "span": {
+    "width": 320,
+    "height": 480,
+    "items": [
+      {
+        "filename": "01-left.png",
+        "screenshotAssetId": "screen",
+        "config": {
+          "width": 320,
+          "height": 480,
+          "device": "pixel",
+          "shell": "cyan",
+          "background": "gradient",
+          "backgroundColorA": "#111827",
+          "backgroundColorB": "#164e63",
+          "backgroundAngle": 132,
+          "fontFamily": "mono",
+          "headline": "Panel one",
+          "subhead": "A shared scene."
+        }
+      },
+      {
+        "filename": "02-center.png",
+        "screenshotAssetId": "screen",
+        "config": {
+          "width": 320,
+          "height": 480,
+          "device": "pixel",
+          "shell": "cyan",
+          "background": "gradient",
+          "backgroundColorA": "#111827",
+          "backgroundColorB": "#164e63",
+          "backgroundAngle": 132,
+          "fontFamily": "mono",
+          "headline": "Panel two",
+          "subhead": "The device crosses."
+        }
+      },
+      {
+        "filename": "03-right.png",
+        "screenshotAssetId": "screen",
+        "config": {
+          "width": 320,
+          "height": 480,
+          "device": "pixel",
+          "shell": "cyan",
+          "background": "gradient",
+          "backgroundColorA": "#111827",
+          "backgroundColorB": "#164e63",
+          "backgroundAngle": 132,
+          "fontFamily": "mono",
+          "headline": "Panel three",
+          "subhead": "Exact crop boundaries."
+        }
+      }
+    ],
+    "spanDevice": {
+      "enabled": true,
+      "startIndex": 0,
+      "endIndex": 2,
+      "sourceIndex": 1,
+      "x": 0.5,
+      "y": 0.06,
+      "scale": 0.86,
+      "rotateX": 5,
+      "rotateY": -25,
+      "rotateZ": -7
+    },
+    "expected": {
+      "width": 320,
+      "height": 480,
+      "alpha": "opaque",
+      "minBytes": 10000,
+      "minOpaquePixels": 1000
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # Cool App Studio Roadmap
 
-Last updated: 2026-08-09
+Last updated: 2026-08-11
 
 This file is the ordered product and release queue for maintainers and the
 nightly product loop. It describes the intended outcome, the boundaries that
@@ -161,8 +161,11 @@ claim rather than a general aspiration.
   fallback explicit in output metadata. The CLI prefers the Playwright-managed
   Chromium and writes a `.png.json` sidecar with renderer selection, browser
   versions, reproducibility status, dimensions, and the PNG hash.
-- [ ] Add repeat-render tests and visual regression fixtures for representative
-  devices, fonts, backgrounds, transparent output, and spanning sets.
+- [x] Add repeat-render tests and visual regression fixtures for representative
+  devices, built-in font stacks, backgrounds, transparent output, and spanning
+  sets. `test/visual-regression.mjs` keeps these fixtures local, compares repeat
+  renders byte-for-byte under the reference renderer, and checks fixed visual
+  anchors plus PNG dimensions and alpha behavior.
 - [ ] Add `cool-app-studio doctor` to report Node, browser, renderer, platform,
   supported formats, and actionable remediation.
 - [ ] Add crash-safe local recovery with clear controls for retaining or clearing

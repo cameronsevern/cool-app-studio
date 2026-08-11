@@ -105,6 +105,13 @@
           image.src = dataUrl;
           await image.decode();
         }
+        async function decodeMountedImages() {
+          await Promise.all(
+            [...document.images]
+              .filter((image) => image.src)
+              .map((image) => image.decode()),
+          );
+        }
 
         try {
           const response = await fetch(`/api/job/${encodeURIComponent(job)}`, {
@@ -179,6 +186,7 @@
           overlay.style.setProperty('--translate-x', `${(span.x - 0.5) * totalWidth}px`);
           canvas.append(overlay);
 
+          await decodeMountedImages();
           await document.fonts.ready;
           await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
           window.renderReady = true;

@@ -17,7 +17,7 @@ The reproducibility baseline is the following checked-in environment:
 | Playwright | npm package `1.61.1` |
 | Browser | Playwright-managed Chrome for Testing, Chromium revision `1228`, browser version `149.0.7827.55` |
 | Browser install | `npx playwright install chromium` after `npm ci` |
-| Launch mode | Headless Chromium with `--hide-scrollbars` and `--force-color-profile=srgb` |
+| Launch mode | Headless Chromium with `--hide-scrollbars`, `--force-color-profile=srgb`, and `--disable-gpu` |
 | Capture | The requested canvas width and height, `deviceScaleFactor: 1`, PNG output |
 
 The exact browser version is derived from Playwright's checked-in browser
@@ -96,8 +96,26 @@ the requested dimensions and transparency mode. Pixel values may vary without
 a numeric threshold across operating systems; the exact permitted invariants
 are the PNG signature, dimensions, and requested transparency mode. Any
 system-font or system-browser render is outside the reproducibility contract,
-regardless of whether it looks similar. Repeat-render fixtures and a measured
-cross-OS variance threshold are the next R2 work item.
+regardless of whether it looks similar. The repeat-render fixtures below are
+same-environment guards; a measured cross-OS variance threshold remains future
+work.
+
+## Repeat-render fixtures
+
+The checked-in `test/fixtures/visual-regression.json` matrix covers iPhone and
+Pixel presentations, several built-in font stacks, gradient/studio/image and
+transparent backgrounds, and a three-panel spanning device. The
+`test:visual-regression` check renders every scene twice through the local API
+and requires byte-identical PNGs under the same pinned browser process. It also
+checks fixed background/device anchor pixels, dimensions, non-empty content,
+and the requested alpha behavior; the spanning fixture checks both the ordered
+ZIP and each cropped panel.
+
+These anchors are same-environment regression guards, not a cross-OS pixel
+promise. Built-in font stacks remain subject to the font and operating-system
+limits above. If the pinned renderer changes, run the fixture with
+`RECORD_VISUAL_FIXTURES=1` to inspect the new anchor values and review the
+contract before updating the checked-in expectations.
 
 ## Verification
 

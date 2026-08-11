@@ -223,9 +223,11 @@ npm test
 ```
 
 The verification suite checks preset and project migration, asset-bundle
-behavior, deterministic ZIP creation, continuous multi-panel crops, and real
-browser renders at every store target. Each PNG's signature and dimensions are
-validated.
+behavior, deterministic ZIP creation, continuous multi-panel crops, real
+browser renders at every store target, and the local visual-repeat fixture
+matrix. The fixture matrix covers built-in font stacks, image and transparent
+backgrounds, fixed visual anchors, and spanning-set crops without sending
+assets off the machine. Each PNG's signature and dimensions are validated.
 
 ## Repository layout
 

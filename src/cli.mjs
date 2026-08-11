@@ -244,7 +244,7 @@ async function getBrowser() {
   browserPromise ??= playwright.chromium.launch({
     headless: true,
     executablePath: selection.executablePath,
-    args: ['--hide-scrollbars', '--force-color-profile=srgb'],
+    args: ['--hide-scrollbars', '--force-color-profile=srgb', '--disable-gpu'],
   });
   return browserPromise;
 }
@@ -349,6 +349,14 @@ async function renderSpanBuffers(baseUrl, items, assetData, spanDevice) {
     if (consoleErrors.length > 0) {
       throw new Error(`Browser set render error: ${consoleErrors.join(' | ')}`);
     }
+    // Prime the full composited surface before taking individual crop clips.
+    // Chromium can defer rasterizing an off-screen 3D layer until its first
+    // clip capture, which would make the first panel observation timing-sensitive.
+    await page.screenshot({
+      type: 'png',
+      clip: { x: 0, y: 0, width: totalWidth, height },
+      animations: 'disabled',
+    });
     const buffers = [];
     for (let index = 0; index < items.length; index += 1) {
       buffers.push(await page.screenshot({
