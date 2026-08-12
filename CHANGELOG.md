@@ -13,6 +13,7 @@ Semantic Versioning after its first public release.
 - Loopback host/origin validation and browser security headers.
 - Same-environment visual-repeat fixtures for representative scenes,
   transparent output, and spanning-set crops.
+- A local `cool-app-studio doctor` diagnostic for runtime and renderer recovery.
 
 ### Changed
 

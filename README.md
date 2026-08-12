@@ -198,6 +198,12 @@ Run `node src/cli.mjs help` for the complete option list. Output dimensions can
 range from 320 to 4096 pixels per side. `--transparent` creates a reusable
 device-only layer, and `--noDevice` creates a text-led composition.
 
+To inspect the local runtime before rendering, run `node src/cli.mjs doctor`.
+It reports the Node.js version, platform, Playwright-managed browser, selected
+renderer mode, supported local formats, and any remediation needed. The check
+only probes local files and the local browser; it does not read project assets
+or contact a hosted renderer.
+
 ## Browser and privacy behavior
 
 - The HTTP server listens only on `127.0.0.1`.

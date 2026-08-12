@@ -166,8 +166,10 @@ claim rather than a general aspiration.
   sets. `test/visual-regression.mjs` keeps these fixtures local, compares repeat
   renders byte-for-byte under the reference renderer, and checks fixed visual
   anchors plus PNG dimensions and alpha behavior.
-- [ ] Add `cool-app-studio doctor` to report Node, browser, renderer, platform,
-  supported formats, and actionable remediation.
+- [x] Add `cool-app-studio doctor` to report Node, browser, renderer, platform,
+  supported formats, and actionable remediation. The diagnostic remains local,
+  probes the selected browser, and distinguishes pinned, fallback, override,
+  and unavailable renderer states.
 - [ ] Add crash-safe local recovery with clear controls for retaining or clearing
   screenshot bytes on the machine.
 - [ ] Add corruption, oversized bundle, missing asset, unsupported font, and

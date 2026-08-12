@@ -6,7 +6,7 @@ import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { homedir, platform } from 'node:os';
+import { arch, homedir, platform, release } from 'node:os';
 import { dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { selectRenderer } from './renderer.mjs';
@@ -34,6 +34,13 @@ let rendererSelection;
 const CAPABILITY_HEADER = 'x-cool-app-studio-capability';
 const CAPABILITY_TOKEN_PLACEHOLDER = '__COOL_APP_STUDIO_CAPABILITY_TOKEN__';
 const PROCESS_CAPABILITY_TOKEN = randomBytes(32).toString('hex');
+const SUPPORTED_NODE_MAJORS = new Set([22, 24]);
+const SUPPORTED_FORMATS = {
+  screenshots: 'PNG, JPEG, WebP, SVG',
+  fonts: 'WOFF2, WOFF, TTF, OTF',
+  projects: '.cool-app-studio, JSON presets',
+  exports: 'PNG, ordered ZIP',
+};
 
 const SECURITY_HEADERS = {
   'Content-Security-Policy': [
@@ -219,6 +226,15 @@ function browserCandidates() {
 
 function getRendererSelection() {
   if (rendererSelection) return rendererSelection;
+  if (!playwright) {
+    rendererSelection = {
+      mode: 'unavailable',
+      executablePath: null,
+      fallback: false,
+      reason: 'Playwright is not installed',
+    };
+    return rendererSelection;
+  }
   rendererSelection = selectRenderer({
     managedPath: playwright.chromium.executablePath(),
     overridePath: process.env.CHROME_PATH,
@@ -607,10 +623,13 @@ async function listen(server, port, fallbackToAvailable = false) {
 }
 
 async function closeResources(server) {
-  if (browserPromise) await (await browserPromise).close();
+  if (browserPromise) {
+    const browser = await browserPromise.catch(() => null);
+    if (browser) await browser.close();
+  }
   browserPromise = undefined;
   rendererSelection = undefined;
-  if (server.listening) {
+  if (server?.listening) {
     await new Promise((resolveClose) => server.close(resolveClose));
   }
 }
@@ -648,6 +667,92 @@ async function serve(flags) {
   };
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
+}
+
+function platformLabel() {
+  return {
+    darwin: 'macOS',
+    linux: 'Linux',
+    win32: 'Windows',
+  }[platform()] ?? platform();
+}
+
+async function doctor() {
+  const nodeMajor = Number(process.versions.node.split('.', 1)[0]);
+  const nodeSupported = SUPPORTED_NODE_MAJORS.has(nodeMajor);
+  const managedPath = playwright?.chromium.executablePath() ?? null;
+  const selection = getRendererSelection();
+  const failures = [];
+  const warnings = [];
+  const remediations = [];
+  let browserVersion = null;
+  let browserError = null;
+
+  if (!nodeSupported) {
+    failures.push(`Node.js ${process.versions.node} is outside the supported Node 22/24 contract`);
+    remediations.push('Use Node.js 22 or Node.js 24 for the supported renderer contract.');
+  }
+
+  if (!playwright) {
+    failures.push('Playwright is not installed');
+    remediations.push(`Run npm ci in ${projectRoot}, then run npx playwright install chromium.`);
+  } else if (selection.mode !== 'unavailable') {
+    try {
+      const browser = await getBrowser();
+      browserVersion = browser.version();
+    } catch (error) {
+      browserError = error.message;
+      failures.push(`The selected browser could not launch: ${error.message}`);
+      remediations.push('Run npx playwright install chromium or set CHROME_PATH to a Chromium-family browser.');
+    }
+  }
+
+  if (selection.mode === 'unavailable' && playwright) {
+    failures.push(selection.reason);
+    remediations.push('Run npx playwright install chromium or set CHROME_PATH to a Chromium-family browser.');
+  }
+
+  if (selection.mode === 'system-fallback' && !browserError) {
+    warnings.push('The pinned Playwright browser is not installed; renders will not be reproducible.');
+    remediations.push('Run npx playwright install chromium to restore pinned renderer output.');
+  }
+  if (selection.mode === 'system-override' && !browserError) {
+    warnings.push('CHROME_PATH is selecting a compatibility browser; this output is outside the reproducibility promise.');
+    remediations.push('Unset CHROME_PATH to prefer the pinned Playwright-managed Chromium.');
+  }
+
+  const status = failures.length > 0 ? 'FAIL' : (warnings.length > 0 ? 'WARN' : 'PASS');
+  console.log('Cool App Studio doctor');
+  console.log(`Status: ${status}`);
+  console.log(`Node: ${process.versions.node} (${nodeSupported ? 'supported' : 'outside supported 22/24 contract'})`);
+  console.log(`Platform: ${platformLabel()} (${platform()}/${arch()}, kernel ${release()})`);
+  console.log(`Playwright: ${playwrightVersion ?? 'not installed'}`);
+  console.log(`Managed browser: ${managedPath ?? 'not available'} (${managedPath && existsSync(managedPath) ? 'installed' : 'missing'})`);
+  console.log(`Renderer: ${selection.mode} (${selection.mode === 'pinned' && !browserError ? 'reproducible' : 'not reproducible'})`);
+  console.log(`Selected browser: ${selection.executablePath ?? 'none'}`);
+  console.log(`Browser version: ${browserVersion ?? 'not available'}`);
+  if (selection.reason) console.log(`Renderer note: ${selection.reason}`);
+  console.log(`Input screenshots: ${SUPPORTED_FORMATS.screenshots}`);
+  console.log(`Local fonts: ${SUPPORTED_FORMATS.fonts}`);
+  console.log(`Projects and presets: ${SUPPORTED_FORMATS.projects}`);
+  console.log(`Exports: ${SUPPORTED_FORMATS.exports}`);
+  if (failures.length > 0) {
+    console.log('Problems:');
+    failures.forEach((failure) => console.log(`- ${failure}`));
+  }
+  if (warnings.length > 0) {
+    console.log('Warnings:');
+    warnings.forEach((warning) => console.log(`- ${warning}`));
+  }
+  if (remediations.length > 0) {
+    console.log('Remediation:');
+    [...new Set(remediations)].forEach((remediation) => console.log(`- ${remediation}`));
+  } else {
+    console.log('Remediation: none needed.');
+  }
+  if (failures.length > 0) process.exitCode = 1;
+
+  await closeResources();
 }
 
 function numericFlag(flags, config, key, fallback) {
@@ -803,6 +908,7 @@ if (!hasExplicitCommand && !flags.noOpen) flags.open = true;
 const usage = `Usage:
   cool-app-studio [--port 4312] [--no-open]
   cool-app-studio serve [--port 4312] [--open]
+  cool-app-studio doctor
   cool-app-studio render --input screenshot.png --output mockup.png [options]
 
 Render options:
@@ -833,6 +939,7 @@ Render options:
 try {
   if (command === 'help' || command === '--help' || flags.help) console.log(usage);
   else if (command === 'serve') await serve(flags);
+  else if (command === 'doctor') await doctor();
   else if (command === 'render') await render(flags);
   else throw new Error(usage);
 } catch (error) {
