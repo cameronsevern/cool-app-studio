@@ -9,7 +9,10 @@ leave the user's machine.
 - Preview and export requests are sent only to the renderer bound to
   `127.0.0.1` on the same machine.
 - Render jobs are removed from server memory when their render completes.
-- Browser storage retains project metadata, not the selected asset bytes.
+- Browser storage retains project metadata for autosave, not selected asset bytes
+  by default. The optional **Keep local asset bytes for crash recovery** control
+  stores a recovery copy of referenced screenshots, backgrounds, and fonts in
+  local IndexedDB on this machine only.
 - A saved `.cool-app-studio` file deliberately contains the local assets used by
   that project so it can be reopened later.
 
@@ -42,10 +45,13 @@ An external integration must be:
 
 ## Clearing local data
 
-Closing the editor clears in-memory asset data. Project metadata can be removed
-through the browser's site-data controls for `127.0.0.1`. Saved presets,
-projects, images, ZIP archives, and PNGs are ordinary local files and must be
-deleted by the user through the operating system.
+Closing the editor clears in-memory asset data. If local recovery is enabled,
+use **Clear local recovery bytes** in the Project panel to remove the retained
+asset copy while keeping the lightweight project autosave. Project metadata and
+any remaining recovery database can also be removed through the browser's
+site-data controls for `127.0.0.1`. Saved presets, projects, images, ZIP
+archives, and PNGs are ordinary local files and must be deleted by the user
+through the operating system.
 
 ## Reporting a concern
 

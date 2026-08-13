@@ -313,6 +313,48 @@ button {
   margin-top: 0;
 }
 
+.recovery-panel {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid #223038;
+  border-radius: 12px;
+  background: #0d1317;
+}
+
+.recovery-toggle {
+  margin-top: 0;
+  color: #c3cdd1;
+}
+
+.recovery-status {
+  margin-top: 10px;
+  color: #819099;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.recovery-status[data-state="saved"],
+.recovery-status[data-state="recovered"] {
+  color: #8ddfc3;
+}
+
+.recovery-status[data-state="saving"] {
+  color: #9fdfe7;
+}
+
+.recovery-status[data-state="error"] {
+  color: #e7be7d;
+}
+
+.recovery-clear-button {
+  margin-top: 8px;
+}
+
+.recovery-clear-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .source-row {
   gap: 10px;
 }

@@ -25,6 +25,9 @@
   const projectSaveButton = document.getElementById('projectSaveButton');
   const projectInput = document.getElementById('projectInput');
   const projectNameInput = document.getElementById('projectNameInput');
+  const recoveryInput = document.getElementById('recoveryInput');
+  const recoveryStatus = document.getElementById('recoveryStatus');
+  const clearRecoveryButton = document.getElementById('clearRecoveryButton');
   const undoButton = document.getElementById('undoButton');
   const redoButton = document.getElementById('redoButton');
   const slideStrip = document.getElementById('slideStrip');
@@ -49,6 +52,11 @@
     'mockup-studio.project.v3',
   ];
   const CONFIG_STORAGE_KEYS = ['mockup-studio.config.v2', 'mockup-studio.config.v1'];
+  const RECOVERY_PREFERENCE_KEY = 'cool-app-studio.recovery.v1.enabled';
+  const RECOVERY_DATABASE_NAME = 'cool-app-studio.recovery.v1';
+  const RECOVERY_STORE_NAME = 'projects';
+  const RECOVERY_RECORD_KEY = 'current';
+  const RECOVERY_DEBOUNCE_MS = 450;
   const HISTORY_LIMIT = 60;
   const capabilityToken = document.querySelector(
     'meta[name="cool-app-studio-capability"]',
@@ -81,6 +89,10 @@
   let historyEnabled = false;
   let restoringHistory = false;
   let viewMode = 'focus';
+  let recoveryEnabled = readRecoveryPreference();
+  let recoverySnapshotPresent = false;
+  let recoveryTimer;
+  let recoveryQueue = Promise.resolve();
 
   const controls = {
     canvasPreset: document.getElementById('canvasPresetSelect'),
@@ -187,6 +199,126 @@
     toastTimer = window.setTimeout(() => statusToast.classList.remove('is-visible'), 3600);
   }
 
+  function readRecoveryPreference() {
+    try {
+      return window.localStorage.getItem(RECOVERY_PREFERENCE_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  function writeRecoveryPreference(enabled) {
+    try {
+      window.localStorage.setItem(RECOVERY_PREFERENCE_KEY, String(enabled));
+      return true;
+    } catch (error) {
+      console.warn('Local recovery preference unavailable', error);
+      return false;
+    }
+  }
+
+  function setRecoveryStatus(state, message, hasSnapshot = recoverySnapshotPresent) {
+    recoveryStatus.dataset.state = state;
+    recoveryStatus.textContent = message;
+    clearRecoveryButton.disabled = !hasSnapshot;
+  }
+
+  function formatRecoveryTime(timestamp) {
+    const date = new Date(timestamp);
+    if (!Number.isFinite(date.getTime())) return 'just now';
+    return new Intl.DateTimeFormat(undefined, {
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(date);
+  }
+
+  function openRecoveryDatabase() {
+    if (!window.indexedDB) {
+      return Promise.reject(new Error('IndexedDB is not available in this browser'));
+    }
+    return new Promise((resolve, reject) => {
+      const request = window.indexedDB.open(RECOVERY_DATABASE_NAME, 1);
+      request.onupgradeneeded = () => {
+        const database = request.result;
+        if (!database.objectStoreNames.contains(RECOVERY_STORE_NAME)) {
+          database.createObjectStore(RECOVERY_STORE_NAME);
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error ?? new Error('Could not open local recovery storage'));
+      request.onblocked = () => reject(new Error('Local recovery storage is blocked by another browser tab'));
+    });
+  }
+
+  function runRecoveryTransaction(mode, operation) {
+    return openRecoveryDatabase().then((database) => new Promise((resolve, reject) => {
+      let result;
+      let settled = false;
+      let transaction;
+      try {
+        transaction = database.transaction(RECOVERY_STORE_NAME, mode);
+      } catch (error) {
+        database.close();
+        reject(error);
+        return;
+      }
+
+      const closeWithError = (error) => {
+        if (settled) return;
+        settled = true;
+        database.close();
+        reject(error);
+      };
+
+      transaction.oncomplete = () => {
+        if (settled) return;
+        settled = true;
+        database.close();
+        resolve(result);
+      };
+      transaction.onerror = () => {
+        closeWithError(transaction.error ?? new Error('Local recovery transaction failed'));
+      };
+      transaction.onabort = () => {
+        closeWithError(transaction.error ?? new Error('Local recovery transaction was aborted'));
+      };
+
+      try {
+        const request = operation(transaction.objectStore(RECOVERY_STORE_NAME));
+        if (request && typeof request.onsuccess !== 'undefined') {
+          request.onsuccess = () => { result = request.result; };
+          request.onerror = () => {
+            try {
+              transaction.abort();
+            } catch {
+              closeWithError(request.error ?? new Error('Local recovery request failed'));
+            }
+          };
+        } else {
+          result = request;
+        }
+      } catch (error) {
+        try {
+          transaction.abort();
+        } catch {
+          closeWithError(error);
+        }
+      }
+    }));
+  }
+
+  function readRecoverySnapshot() {
+    return runRecoveryTransaction('readonly', (store) => store.get(RECOVERY_RECORD_KEY));
+  }
+
+  function writeRecoverySnapshot(snapshot) {
+    return runRecoveryTransaction('readwrite', (store) => store.put(snapshot, RECOVERY_RECORD_KEY));
+  }
+
+  function deleteRecoverySnapshot() {
+    return runRecoveryTransaction('readwrite', (store) => store.delete(RECOVERY_RECORD_KEY));
+  }
+
   function fileToDataUrl(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -270,6 +402,106 @@
     return MockupProject.serialize(project, false);
   }
 
+  function enqueueRecovery(operation) {
+    const next = recoveryQueue.then(operation, operation);
+    recoveryQueue = next.catch(() => {});
+    return next;
+  }
+
+  async function persistRecoveryProjectNow() {
+    if (!recoveryEnabled || !project) return;
+    setRecoveryStatus('saving', 'On · updating the local recovery copy…');
+    try {
+      await writeRecoverySnapshot({
+        savedAt: Date.now(),
+        payload: MockupProject.serialize(project, true),
+      });
+      recoverySnapshotPresent = true;
+      setRecoveryStatus(
+        'saved',
+        `On · local asset copy updated at ${formatRecoveryTime(Date.now())}.`,
+        true,
+      );
+    } catch (error) {
+      console.warn('Local recovery unavailable', error);
+      setRecoveryStatus(
+        'error',
+        'On · local recovery could not be updated. Free browser storage or retry.',
+      );
+    }
+  }
+
+  function scheduleRecoveryPersist({ immediate = false } = {}) {
+    window.clearTimeout(recoveryTimer);
+    recoveryTimer = undefined;
+    if (!recoveryEnabled) return;
+    const persist = () => {
+      recoveryTimer = undefined;
+      enqueueRecovery(persistRecoveryProjectNow);
+    };
+    if (immediate) persist();
+    else recoveryTimer = window.setTimeout(persist, RECOVERY_DEBOUNCE_MS);
+  }
+
+  async function clearRecoveryBytes({ announce = false } = {}) {
+    window.clearTimeout(recoveryTimer);
+    recoveryTimer = undefined;
+    return enqueueRecovery(async () => {
+      try {
+        await deleteRecoverySnapshot();
+        const hadSnapshot = recoverySnapshotPresent;
+        recoverySnapshotPresent = false;
+        setRecoveryStatus(
+          recoveryEnabled ? 'empty' : 'off',
+          recoveryEnabled
+            ? 'On · no local asset copy is retained.'
+            : 'Off · asset bytes are not retained in browser storage.',
+          false,
+        );
+        if (announce) showStatus(hadSnapshot ? 'Local recovery bytes cleared' : 'No local recovery bytes to clear');
+      } catch (error) {
+        console.warn('Could not clear local recovery', error);
+        setRecoveryStatus(
+          'error',
+          'Local recovery could not be cleared. Try again or use browser site-data controls.',
+        );
+        if (announce) showStatus('Recovery clear failed');
+      }
+    });
+  }
+
+  async function loadRecoveryProject() {
+    recoveryInput.checked = recoveryEnabled;
+    if (!recoveryEnabled) {
+      setRecoveryStatus('off', 'Off · asset bytes are not retained in browser storage.', false);
+      return null;
+    }
+    setRecoveryStatus('saving', 'On · checking for a local recovery copy…', false);
+    try {
+      const snapshot = await readRecoverySnapshot();
+      if (!snapshot?.payload) {
+        setRecoveryStatus('empty', 'On · no local asset copy is retained.', false);
+        return null;
+      }
+      const recovered = MockupProject.normalizeProject(snapshot.payload, MockupScene.DEFAULT_CONFIG);
+      recoverySnapshotPresent = true;
+      setRecoveryStatus(
+        'recovered',
+        `On · recovered local asset copy from ${formatRecoveryTime(snapshot.savedAt)}.`,
+        true,
+      );
+      return recovered;
+    } catch (error) {
+      console.warn('Local recovery could not be loaded', error);
+      setRecoveryStatus(
+        'error',
+        'On · recovery copy unavailable; using project metadata instead.',
+        false,
+      );
+      return null;
+    }
+  }
+
   function persistProject() {
     try {
       window.localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(projectForStorage()));
@@ -278,9 +510,12 @@
     } catch (error) {
       console.warn('Project autosave unavailable', error);
     }
+    scheduleRecoveryPersist();
   }
 
-  function loadStoredProject() {
+  async function loadStoredProject() {
+    const recoveredProject = await loadRecoveryProject();
+    if (recoveredProject) return recoveredProject;
     try {
       const storedProject = window.localStorage.getItem(PROJECT_STORAGE_KEY);
       if (storedProject) {
@@ -1445,6 +1680,27 @@
     updatePreview();
   });
 
+  recoveryInput.addEventListener('change', async () => {
+    const enabled = recoveryInput.checked;
+    if (!writeRecoveryPreference(enabled)) {
+      recoveryInput.checked = recoveryEnabled;
+      setRecoveryStatus('error', 'Recovery preference could not be saved in this browser.');
+      return;
+    }
+    recoveryEnabled = enabled;
+    if (enabled) {
+      setRecoveryStatus('saving', 'On · creating a local recovery copy…');
+      scheduleRecoveryPersist({ immediate: true });
+      showStatus('Local recovery enabled');
+      return;
+    }
+    await clearRecoveryBytes({ announce: true });
+  });
+
+  clearRecoveryButton.addEventListener('click', () => {
+    void clearRecoveryBytes({ announce: true });
+  });
+
   projectNameInput.addEventListener('input', (event) => {
     project.name = event.target.value;
     persistProject();
@@ -1589,9 +1845,13 @@
     fitSetOverview();
   });
 
+  window.addEventListener('pagehide', () => {
+    scheduleRecoveryPersist({ immediate: true });
+  });
+
   (async () => {
     try {
-      project = loadStoredProject();
+      project = await loadStoredProject();
       config = MockupProject.composeConfig(project);
       await hydrateSampleAssets();
       composeSelectedConfig();

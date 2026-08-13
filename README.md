@@ -58,8 +58,9 @@ Then rerun `npm start` from a source checkout or `npx cool-app-studio`
 after package publication.
 
 If you installed a persistent global command instead of using `npx`, remove it
-with `npm uninstall --global cool-app-studio`. The project does not install
-a background service or retain screenshots outside files you explicitly save.
+with `npm uninstall --global cool-app-studio`. The project does not install a
+background service or send screenshots elsewhere; optional local recovery is
+controlled from the editor.
 
 ## First export in one minute
 
@@ -134,9 +135,12 @@ used by the set, so it can be reopened without reselecting them. Projects saved
 as `.screenshot-forge` or `.mockup-studio` remain importable.
 
 The editor remembers project metadata in local browser storage but does not
-persist asset bytes there. After a browser restart, reopen the project bundle or
-reselect local assets. Preset JSON files can also be loaded into a later session
-or used by the CLI.
+persist asset bytes there by default. In **Project → Local recovery**, turn on
+**Keep local asset bytes for crash recovery** when you want the latest referenced
+screenshots, backgrounds, and fonts retained in local IndexedDB so a restart can
+restore them. Use **Clear local recovery bytes** to remove that copy; the
+lightweight project autosave remains. Preset JSON files can also be loaded into
+a later session or used by the CLI.
 
 ## Set editing shortcuts
 
@@ -212,7 +216,8 @@ or contact a hosted renderer.
 - Sensitive render API requests also require a per-process capability token held
   only by the local editor and renderer pages; it is not an account credential.
 - Screenshot, background, and font data is read into memory for preview and
-  rendering; it is not written by the server or uploaded.
+  rendering; it is not written by the server or uploaded. Optional local
+  recovery may retain a copy on this machine when explicitly enabled.
 - Export jobs are removed from memory when the render finishes.
 - The pinned Playwright-managed Chromium is preferred. `CHROME_PATH` can
   explicitly select a compatibility browser, and CLI metadata labels that

@@ -14,6 +14,8 @@ Semantic Versioning after its first public release.
 - Same-environment visual-repeat fixtures for representative scenes,
   transparent output, and spanning-set crops.
 - A local `cool-app-studio doctor` diagnostic for runtime and renderer recovery.
+- Optional crash-safe local recovery with explicit retention and clear controls
+  for screenshot, background, and font bytes.
 
 ### Changed
 
@@ -32,6 +34,8 @@ Semantic Versioning after its first public release.
   fallback and override states.
 - Stabilize pinned 3D crops by using software compositing, waiting for mounted
   local images, and priming the continuous render surface before panel clips.
+- Keep asset-free metadata autosave as the default while storing opt-in recovery
+  snapshots atomically in local IndexedDB.
 
 ### Product work in progress
 

@@ -1,6 +1,6 @@
 # Cool App Studio Roadmap
 
-Last updated: 2026-08-11
+Last updated: 2026-08-13
 
 This file is the ordered product and release queue for maintainers and the
 nightly product loop. It describes the intended outcome, the boundaries that
@@ -170,8 +170,10 @@ claim rather than a general aspiration.
   supported formats, and actionable remediation. The diagnostic remains local,
   probes the selected browser, and distinguishes pinned, fallback, override,
   and unavailable renderer states.
-- [ ] Add crash-safe local recovery with clear controls for retaining or clearing
-  screenshot bytes on the machine.
+- [x] Add crash-safe local recovery with clear controls for retaining or clearing
+  screenshot bytes on the machine. The editor keeps metadata-only autosave by
+  default and offers an explicit local IndexedDB recovery copy for referenced
+  screenshots, backgrounds, and fonts, with a visible clear action.
 - [ ] Add corruption, oversized bundle, missing asset, unsupported font, and
   interrupted export recovery tests.
 - [ ] Document the project/preset schema and make migration compatibility part of

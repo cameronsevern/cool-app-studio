@@ -43,6 +43,19 @@
             </div>
             <input id="presetInput" type="file" accept="application/json,.json" hidden>
             <p class="field-help">Projects can deliberately bundle local assets. Presets remain lightweight and asset-free.</p>
+            <div class="recovery-panel">
+              <label class="toggle-row recovery-toggle" for="recoveryInput">
+                <input id="recoveryInput" type="checkbox">
+                <span>Keep local asset bytes for crash recovery</span>
+              </label>
+              <div class="recovery-status" id="recoveryStatus" data-state="off" role="status" aria-live="polite">
+                Off · asset bytes are not retained in browser storage.
+              </div>
+              <button class="text-button recovery-clear-button" id="clearRecoveryButton" type="button" disabled>
+                Clear local recovery bytes
+              </button>
+              <p class="field-help">Optional and local-only. When enabled, the latest screenshot, background, and font bytes stay on this machine so a restart can restore them.</p>
+            </div>
           </div>
         </details>
 
