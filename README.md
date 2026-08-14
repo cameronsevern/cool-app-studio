@@ -225,7 +225,9 @@ or contact a hosted renderer.
 
 Portable project bundles deliberately contain the local assets used by the
 project. Treat them as sensitive if the screenshots, fonts, logos, or backgrounds
-are confidential. See [PRIVACY.md](PRIVACY.md) for the complete boundary.
+are confidential. The editor rejects project bundles over 50 MB before parsing
+so a large or damaged file cannot silently consume the browser session. See
+[PRIVACY.md](PRIVACY.md) for the complete boundary.
 
 ## Verification
 

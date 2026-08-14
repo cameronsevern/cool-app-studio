@@ -1,6 +1,6 @@
 # Cool App Studio Roadmap
 
-Last updated: 2026-08-13
+Last updated: 2026-08-14
 
 This file is the ordered product and release queue for maintainers and the
 nightly product loop. It describes the intended outcome, the boundaries that
@@ -174,8 +174,12 @@ claim rather than a general aspiration.
   screenshot bytes on the machine. The editor keeps metadata-only autosave by
   default and offers an explicit local IndexedDB recovery copy for referenced
   screenshots, backgrounds, and fonts, with a visible clear action.
-- [ ] Add corruption, oversized bundle, missing asset, unsupported font, and
-  interrupted export recovery tests.
+- [x] Add corruption, oversized bundle, missing asset, unsupported font, and
+  interrupted export recovery tests. `test/recovery.mjs` verifies malformed
+  local recovery falls back to metadata, project files over the local 50 MB
+  bound are rejected before parsing, missing assets produce a reselect message,
+  unsupported fonts fall back to the system font, and interrupted exports
+  restore their controls.
 - [ ] Document the project/preset schema and make migration compatibility part of
   release testing.
 - [ ] Add export progress, cancellation, retry, and bounded resource cleanup.

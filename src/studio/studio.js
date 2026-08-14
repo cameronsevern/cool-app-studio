@@ -57,6 +57,7 @@
   const RECOVERY_STORE_NAME = 'projects';
   const RECOVERY_RECORD_KEY = 'current';
   const RECOVERY_DEBOUNCE_MS = 450;
+  const MAX_PROJECT_FILE_BYTES = 50 * 1024 * 1024;
   const HISTORY_LIMIT = 60;
   const capabilityToken = document.querySelector(
     'meta[name="cool-app-studio-capability"]',
@@ -592,21 +593,35 @@
   async function loadCustomFont(dataUrl) {
     if (!dataUrl || loadedFontDataUrl === dataUrl) return;
     if (loadedFontFace) document.fonts.delete(loadedFontFace);
+    loadedFontFace = undefined;
+    loadedFontDataUrl = '';
     const font = new FontFace(config.customFontName, `url(${dataUrl})`);
-    loadedFontFace = await font.load();
+    const loaded = await font.load();
+    loadedFontFace = loaded;
     loadedFontDataUrl = dataUrl;
-    document.fonts.add(loadedFontFace);
+    document.fonts.add(loaded);
   }
 
   async function applyProjectFont() {
     refreshAssets();
     if (config.fontFamily === 'custom' && assets.fontDataUrl) {
-      await loadCustomFont(assets.fontDataUrl);
-      return;
+      try {
+        await loadCustomFont(assets.fontDataUrl);
+        return true;
+      } catch (error) {
+        console.warn('Custom font could not be loaded', error);
+        const font = assetById(project.fontAssetId);
+        if (font) font.dataUrl = '';
+        config = { ...config, fontFamily: 'system' };
+        refreshAssets();
+        showStatus('Custom font unavailable; using the system font. Reselect the font file to try again.');
+        return false;
+      }
     }
     if (loadedFontFace) document.fonts.delete(loadedFontFace);
     loadedFontFace = undefined;
     loadedFontDataUrl = '';
+    return true;
   }
 
   function updateHistoryButtons() {
@@ -1188,6 +1203,9 @@
   }
 
   async function openProjectFile(file) {
+    if (file.size > MAX_PROJECT_FILE_BYTES) {
+      throw new Error('Project file exceeds the 50 MB local limit');
+    }
     const parsed = JSON.parse(await file.text());
     project = MockupProject.normalizeProject(parsed, MockupScene.DEFAULT_CONFIG);
     config = MockupProject.composeConfig(project);
@@ -1266,10 +1284,10 @@
 
   async function exportCurrentSlide() {
     syncProjectFromConfig();
-    validateExportAssets(false);
     exportButton.disabled = true;
     exportButton.textContent = 'Rendering…';
     try {
+      validateExportAssets(false);
       const span = repairSpanDevice();
       const selectedIndex = project.slides.indexOf(currentSlide());
       const isSpanned = span && selectedIndex >= span.startIndex && selectedIndex <= span.endIndex;
@@ -1633,16 +1651,17 @@
     if (!file) return;
     try {
       const dataUrl = await fileToDataUrl(file);
-      project.fontAssetId = MockupProject.createAsset(project, {
+      const assetId = MockupProject.createAsset(project, {
         name: file.name,
         type: 'font',
         dataUrl,
       });
+      project.fontAssetId = assetId;
       config = { ...config, fontFamily: 'custom' };
-      await loadCustomFont(dataUrl);
+      const loaded = await applyProjectFont();
       updateControlValues();
       updatePreview();
-      showStatus('Shared local font loaded');
+      if (loaded) showStatus('Shared local font loaded');
     } catch (error) {
       console.error(error);
       showStatus(`Font failed: ${error.message}`);

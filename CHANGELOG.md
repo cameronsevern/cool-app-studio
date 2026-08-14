@@ -16,6 +16,8 @@ Semantic Versioning after its first public release.
 - A local `cool-app-studio doctor` diagnostic for runtime and renderer recovery.
 - Optional crash-safe local recovery with explicit retention and clear controls
   for screenshot, background, and font bytes.
+- Recovery-boundary checks for malformed snapshots, oversized projects, missing
+  assets, unsupported fonts, and interrupted exports.
 
 ### Changed
 
