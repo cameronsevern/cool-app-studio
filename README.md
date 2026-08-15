@@ -142,6 +142,9 @@ restore them. Use **Clear local recovery bytes** to remove that copy; the
 lightweight project autosave remains. Preset JSON files can also be loaded into
 a later session or used by the CLI.
 
+The portable project and preset shapes, supported legacy inputs, and migration
+policy are documented in the [project schema guide](docs/PROJECT_SCHEMA.md).
+
 ## Set editing shortcuts
 
 - `Cmd/Ctrl + Z` — undo
@@ -235,8 +238,9 @@ so a large or damaged file cannot silently consume the browser session. See
 npm test
 ```
 
-The verification suite checks preset and project migration, asset-bundle
-behavior, deterministic ZIP creation, continuous multi-panel crops, real
+The verification suite checks the documented preset and project migration
+contract, asset-bundle behavior, deterministic ZIP creation, continuous
+multi-panel crops, real
 browser renders at every store target, and the local visual-repeat fixture
 matrix. The fixture matrix covers built-in font stacks, image and transparent
 backgrounds, fixed visual anchors, and spanning-set crops without sending

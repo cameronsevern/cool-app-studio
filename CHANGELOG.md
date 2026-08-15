@@ -18,6 +18,8 @@ Semantic Versioning after its first public release.
   for screenshot, background, and font bytes.
 - Recovery-boundary checks for malformed snapshots, oversized projects, missing
   assets, unsupported fonts, and interrupted exports.
+- A documented project/preset schema and release-gated compatibility checks for
+  legacy config and project inputs.
 
 ### Changed
 

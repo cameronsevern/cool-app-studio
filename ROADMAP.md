@@ -180,8 +180,10 @@ claim rather than a general aspiration.
   bound are rejected before parsing, missing assets produce a reselect message,
   unsupported fonts fall back to the system font, and interrupted exports
   restore their controls.
-- [ ] Document the project/preset schema and make migration compatibility part of
-  release testing.
+- [x] Document the project/preset schema and make migration compatibility part of
+  release testing. [docs/PROJECT_SCHEMA.md](docs/PROJECT_SCHEMA.md) defines the
+  v4 project and v2 preset contracts, supported legacy inputs, and local-first
+  migration boundaries; `test/schema-compatibility.mjs` runs in `npm test`.
 - [ ] Add export progress, cancellation, retry, and bounded resource cleanup.
 - [ ] Add a local export manifest containing filenames, dimensions, target,
   renderer version, project schema, and content hashes.

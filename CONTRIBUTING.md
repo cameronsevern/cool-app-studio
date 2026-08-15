@@ -7,6 +7,8 @@ Thank you for helping make local, repeatable screenshot production better.
 - Read [ROADMAP.md](ROADMAP.md) for product priorities and human-gated work.
 - Read [PRIVACY.md](PRIVACY.md) before changing asset handling, persistence,
   networking, diagnostics, integrations, or release automation.
+- Read the [project schema guide](docs/PROJECT_SCHEMA.md) before changing
+  project, preset, or migration behavior.
 - Search existing issues before proposing a large feature.
 - Keep a pull request focused on one coherent outcome.
 
@@ -48,6 +50,9 @@ Add focused checks for new behavior. User-facing changes should also be exercise
 in the editor at relevant store dimensions. Record what was observed; do not
 claim visual, cross-platform, hosted-CI, signing, store, or publication evidence
 that was not actually obtained.
+
+Run `npm run test:schema-compatibility` when changing project or preset parsing;
+the same check runs as part of `npm test`.
 
 ## Product expectations
 
