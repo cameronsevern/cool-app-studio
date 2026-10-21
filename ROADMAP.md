@@ -184,8 +184,8 @@ claim rather than a general aspiration.
   release testing. [docs/PROJECT_SCHEMA.md](docs/PROJECT_SCHEMA.md) defines the
   v4 project and v2 preset contracts, supported legacy inputs, and local-first
   migration boundaries; `test/schema-compatibility.mjs` runs in `npm test`.
-- [ ] Add export progress, cancellation, retry, and bounded resource cleanup.
-- [ ] Add a local export manifest containing filenames, dimensions, target,
+- [x] Add export progress, cancellation, retry, and bounded resource cleanup.
+- [x] Add a local export manifest containing filenames, dimensions, target,
   renderer version, project schema, and content hashes.
 - [ ] Perform a focused threat-model review of loopback serving, project bundles,
   local fonts, SVG input, browser extensions, and optional future integrations.
@@ -202,7 +202,7 @@ Exit criteria:
 Goal: make complete store campaigns faster and more approachable than assembling
 them in a general-purpose design tool.
 
-- [ ] Drag multiple screenshots into a new ordered set in one action.
+- [x] Drag or choose multiple screenshots into a new ordered set in one action.
 - [ ] Add an editable first-run project that teaches shared versus slide-level
   controls through the product itself.
 - [ ] Add current store validation, safe-area overlays, target drift warnings,

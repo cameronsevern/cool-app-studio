@@ -28,7 +28,9 @@ const projectRoot = resolve(toolDirectory, '..');
 const studioDirectory = resolve(toolDirectory, 'studio');
 const examplesDirectory = resolve(projectRoot, 'examples');
 const renderJobs = new Map();
+const exportJobs = new Map();
 const renderReadyTimeoutMs = 60_000;
+const exportJobTtlMs = 5 * 60_000;
 let browserPromise;
 let rendererSelection;
 const CAPABILITY_HEADER = 'x-cool-app-studio-capability';
@@ -325,7 +327,9 @@ async function renderBuffer(baseUrl, config, assets) {
   }
 }
 
-async function renderSpanBuffers(baseUrl, items, assetData, spanDevice) {
+async function renderSpanBuffers(baseUrl, items, assetData, spanDevice, options = {}) {
+  const { onProgress = () => {}, isCancelled = () => false } = options;
+  if (isCancelled()) throw Object.assign(new Error('Export cancelled'), { code: 'EXPORT_CANCELLED' });
   const width = clampDimension(items[0].config?.width);
   const height = clampDimension(items[0].config?.height);
   const totalWidth = width * items.length;
@@ -375,17 +379,226 @@ async function renderSpanBuffers(baseUrl, items, assetData, spanDevice) {
     });
     const buffers = [];
     for (let index = 0; index < items.length; index += 1) {
+      if (isCancelled()) throw Object.assign(new Error('Export cancelled'), { code: 'EXPORT_CANCELLED' });
       buffers.push(await page.screenshot({
         type: 'png',
         clip: { x: index * width, y: 0, width, height },
         omitBackground: items[index].config?.background === 'transparent',
         animations: 'disabled',
       }));
+      onProgress(index + 1);
     }
     return buffers;
   } finally {
     renderJobs.delete(jobId);
     await page.close();
+  }
+}
+
+class BatchValidationError extends Error {}
+
+function normalizeBatchPayload(payload) {
+  if (!Array.isArray(payload.items) || payload.items.length === 0) {
+    throw new BatchValidationError('A batch requires at least one slide');
+  }
+  if (payload.items.length > 10) {
+    throw new BatchValidationError('A batch can contain at most 10 slides');
+  }
+  const assetData = payload.assets ?? {};
+  let spanDevice = null;
+  if (payload.spanDevice?.enabled) {
+    const startIndex = Number(payload.spanDevice.startIndex);
+    const endIndex = Number(payload.spanDevice.endIndex);
+    const sourceIndex = Number(payload.spanDevice.sourceIndex);
+    if (![startIndex, endIndex, sourceIndex].every(Number.isInteger)) {
+      throw new BatchValidationError('The spanning panel range is invalid');
+    }
+    if (startIndex < 0 || endIndex >= payload.items.length || endIndex <= startIndex) {
+      throw new BatchValidationError('A spanning device requires at least two adjacent panels');
+    }
+    if (endIndex - startIndex + 1 > 5) {
+      throw new BatchValidationError('A spanning device can cross at most five panels');
+    }
+    if (sourceIndex < startIndex || sourceIndex > endIndex) {
+      throw new BatchValidationError('The spanning screenshot source must be inside its panel range');
+    }
+    const spanValues = {
+      x: Number(payload.spanDevice.x ?? 0.5),
+      y: Number(payload.spanDevice.y ?? 0.08),
+      scale: Number(payload.spanDevice.scale ?? 1),
+      rotateX: Number(payload.spanDevice.rotateX ?? 5),
+      rotateY: Number(payload.spanDevice.rotateY ?? -25),
+      rotateZ: Number(payload.spanDevice.rotateZ ?? -7),
+    };
+    if (!Object.values(spanValues).every(Number.isFinite)) {
+      throw new BatchValidationError('The spanning device transform is invalid');
+    }
+    const spanWidth = clampDimension(payload.items[startIndex].config?.width);
+    const spanHeight = clampDimension(payload.items[startIndex].config?.height);
+    const dimensionsMatch = payload.items
+      .slice(startIndex, endIndex + 1)
+      .every((item) => clampDimension(item.config?.width) === spanWidth
+        && clampDimension(item.config?.height) === spanHeight);
+    if (!dimensionsMatch) {
+      throw new BatchValidationError('Spanning panels must use the same canvas dimensions');
+    }
+    spanDevice = {
+      enabled: true,
+      startIndex,
+      endIndex,
+      sourceIndex,
+      x: Math.max(0, Math.min(1, spanValues.x)),
+      y: Math.max(-0.5, Math.min(0.5, spanValues.y)),
+      scale: Math.max(0.4, Math.min(2, spanValues.scale)),
+      rotateX: Math.max(-24, Math.min(24, spanValues.rotateX)),
+      rotateY: Math.max(-46, Math.min(46, spanValues.rotateY)),
+      rotateZ: Math.max(-18, Math.min(18, spanValues.rotateZ)),
+    };
+  }
+
+  for (const [index, item] of payload.items.entries()) {
+    const assets = {
+      screenImageUrl: assetData[item.screenshotAssetId] ?? '',
+      backgroundImageUrl: item.backgroundAssetId
+        ? (assetData[item.backgroundAssetId] ?? '')
+        : '',
+      fontDataUrl: item.fontAssetId ? (assetData[item.fontAssetId] ?? '') : '',
+    };
+    const isSpanned = spanDevice && index >= spanDevice.startIndex && index <= spanDevice.endIndex;
+    const needsOwnScreenshot = !isSpanned || index === spanDevice.sourceIndex;
+    if (needsOwnScreenshot && !assets.screenImageUrl.startsWith('data:image/')) {
+      throw new BatchValidationError(`Slide ${index + 1} is missing a screenshot`);
+    }
+    if (item.config?.background === 'image' && !assets.backgroundImageUrl.startsWith('data:image/')) {
+      throw new BatchValidationError(`Slide ${index + 1} is missing the shared background image`);
+    }
+    if (item.config?.fontFamily === 'custom' && !assets.fontDataUrl.startsWith('data:')) {
+      throw new BatchValidationError(`Slide ${index + 1} is missing the shared font`);
+    }
+  }
+
+  return {
+    items: payload.items,
+    assetData,
+    spanDevice,
+    outputIndex: payload.outputIndex,
+  };
+}
+
+function assertExportActive(isCancelled) {
+  if (isCancelled()) throw Object.assign(new Error('Export cancelled'), { code: 'EXPORT_CANCELLED' });
+}
+
+async function renderBatchPayload(baseUrl, batch, options = {}) {
+  const { onProgress = () => {}, isCancelled = () => false } = options;
+  const { items, assetData, spanDevice } = batch;
+  const buffers = new Array(items.length);
+  let completed = 0;
+  for (const [index, item] of items.entries()) {
+    assertExportActive(isCancelled);
+    const assets = {
+      screenImageUrl: assetData[item.screenshotAssetId] ?? '',
+      backgroundImageUrl: item.backgroundAssetId
+        ? (assetData[item.backgroundAssetId] ?? '')
+        : '',
+      fontDataUrl: item.fontAssetId ? (assetData[item.fontAssetId] ?? '') : '',
+    };
+    const isSpanned = spanDevice && index >= spanDevice.startIndex && index <= spanDevice.endIndex;
+    if (!isSpanned) {
+      buffers[index] = await renderBuffer(baseUrl, item.config ?? {}, assets);
+      completed += 1;
+      onProgress(completed);
+    }
+  }
+  if (spanDevice) {
+    const spanItems = items.slice(spanDevice.startIndex, spanDevice.endIndex + 1);
+    const spanBuffers = await renderSpanBuffers(
+      baseUrl,
+      spanItems,
+      assetData,
+      {
+        ...spanDevice,
+        startIndex: 0,
+        endIndex: spanItems.length - 1,
+        sourceIndex: spanDevice.sourceIndex - spanDevice.startIndex,
+      },
+      {
+        isCancelled,
+        onProgress: (spanCompleted) => onProgress(completed + spanCompleted),
+      },
+    );
+    spanBuffers.forEach((buffer, index) => {
+      buffers[spanDevice.startIndex + index] = buffer;
+    });
+  }
+  return buffers;
+}
+
+function batchEntries(batch, buffers) {
+  return batch.items.map((item, index) => {
+    const filename = String(item.filename ?? `slide-${index + 1}.png`)
+      .split(/[\\/]/)
+      .pop()
+      .replace(/[^a-zA-Z0-9._-]+/g, '-');
+    return { name: filename || `slide-${index + 1}.png`, data: buffers[index] };
+  });
+}
+
+async function createBatchArchive(batch, buffers) {
+  const renderer = await getRendererMetadata();
+  const entries = batchEntries(batch, buffers);
+  const manifest = {
+    schemaVersion: 1,
+    projectSchemaVersion: 4,
+    target: batch.items[0].config?.canvasPreset ?? 'custom',
+    dimensions: {
+      width: clampDimension(batch.items[0].config?.width),
+      height: clampDimension(batch.items[0].config?.height),
+    },
+    renderer,
+    outputs: entries.map((entry, index) => ({
+      filename: entry.name,
+      width: clampDimension(batch.items[index].config?.width),
+      height: clampDimension(batch.items[index].config?.height),
+      sha256: createHash('sha256').update(entry.data).digest('hex'),
+    })),
+  };
+  return createZip([
+    ...entries,
+    {
+      name: '_cool-app-studio-manifest.json',
+      data: Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`),
+    },
+  ]);
+}
+
+function scheduleExportJobCleanup(id) {
+  const timer = setTimeout(() => exportJobs.delete(id), exportJobTtlMs);
+  timer.unref?.();
+}
+
+async function runExportJob(job, batch, baseUrl) {
+  job.state = 'running';
+  job.startedAt = Date.now();
+  try {
+    const buffers = await renderBatchPayload(baseUrl, batch, {
+      isCancelled: () => job.cancelRequested,
+      onProgress: (completed) => {
+        job.completed = completed;
+      },
+    });
+    assertExportActive(() => job.cancelRequested);
+    job.archive = await createBatchArchive(batch, buffers);
+    job.state = 'completed';
+    job.completed = job.total;
+    job.finishedAt = Date.now();
+    job.downloadName = `${String(batch.items[0].config?.canvasPreset ?? 'custom')}-export.zip`;
+  } catch (error) {
+    job.state = error.code === 'EXPORT_CANCELLED' ? 'cancelled' : 'failed';
+    job.error = error.message;
+    job.finishedAt = Date.now();
+  } finally {
+    scheduleExportJobCleanup(job.id);
   }
 }
 
@@ -453,119 +666,94 @@ function createStudioServer() {
 
       if (request.method === 'POST' && url.pathname === '/api/render-batch') {
         const payload = await readRequestJson(request);
-        if (!Array.isArray(payload.items) || payload.items.length === 0) {
-          return send(response, 400, 'A batch requires at least one slide');
+        let batch;
+        try {
+          batch = normalizeBatchPayload(payload);
+        } catch (error) {
+          if (error instanceof BatchValidationError) return send(response, 400, error.message);
+          throw error;
         }
-        if (payload.items.length > 10) {
-          return send(response, 400, 'A batch can contain at most 10 slides');
-        }
-        const assetData = payload.assets ?? {};
-        let spanDevice = null;
-        if (payload.spanDevice?.enabled) {
-          const startIndex = Number(payload.spanDevice.startIndex);
-          const endIndex = Number(payload.spanDevice.endIndex);
-          const sourceIndex = Number(payload.spanDevice.sourceIndex);
-          if (![startIndex, endIndex, sourceIndex].every(Number.isInteger)) {
-            return send(response, 400, 'The spanning panel range is invalid');
-          }
-          if (startIndex < 0 || endIndex >= payload.items.length || endIndex <= startIndex) {
-            return send(response, 400, 'A spanning device requires at least two adjacent panels');
-          }
-          if (endIndex - startIndex + 1 > 5) {
-            return send(response, 400, 'A spanning device can cross at most five panels');
-          }
-          if (sourceIndex < startIndex || sourceIndex > endIndex) {
-            return send(response, 400, 'The spanning screenshot source must be inside its panel range');
-          }
-          const spanValues = {
-            x: Number(payload.spanDevice.x ?? 0.5),
-            y: Number(payload.spanDevice.y ?? 0.08),
-            scale: Number(payload.spanDevice.scale ?? 1),
-            rotateX: Number(payload.spanDevice.rotateX ?? 5),
-            rotateY: Number(payload.spanDevice.rotateY ?? -25),
-            rotateZ: Number(payload.spanDevice.rotateZ ?? -7),
-          };
-          if (!Object.values(spanValues).every(Number.isFinite)) {
-            return send(response, 400, 'The spanning device transform is invalid');
-          }
-          const spanWidth = clampDimension(payload.items[startIndex].config?.width);
-          const spanHeight = clampDimension(payload.items[startIndex].config?.height);
-          const dimensionsMatch = payload.items
-            .slice(startIndex, endIndex + 1)
-            .every((item) => clampDimension(item.config?.width) === spanWidth
-              && clampDimension(item.config?.height) === spanHeight);
-          if (!dimensionsMatch) {
-            return send(response, 400, 'Spanning panels must use the same canvas dimensions');
-          }
-          spanDevice = {
-            enabled: true,
-            startIndex,
-            endIndex,
-            sourceIndex,
-            x: Math.max(0, Math.min(1, spanValues.x)),
-            y: Math.max(-0.5, Math.min(0.5, spanValues.y)),
-            scale: Math.max(0.4, Math.min(2, spanValues.scale)),
-            rotateX: Math.max(-24, Math.min(24, spanValues.rotateX)),
-            rotateY: Math.max(-46, Math.min(46, spanValues.rotateY)),
-            rotateZ: Math.max(-18, Math.min(18, spanValues.rotateZ)),
-          };
+        const outputIndex = batch.outputIndex === undefined ? undefined : Number(batch.outputIndex);
+        if (outputIndex !== undefined
+          && (!Number.isInteger(outputIndex) || outputIndex < 0 || outputIndex >= batch.items.length)) {
+          return send(response, 400, 'The requested output panel is invalid');
         }
         const address = server.address();
         const baseUrl = `http://127.0.0.1:${address.port}`;
-        const buffers = new Array(payload.items.length);
-        for (const [index, item] of payload.items.entries()) {
-          const assets = {
-            screenImageUrl: assetData[item.screenshotAssetId] ?? '',
-            backgroundImageUrl: item.backgroundAssetId
-              ? (assetData[item.backgroundAssetId] ?? '')
-              : '',
-            fontDataUrl: item.fontAssetId ? (assetData[item.fontAssetId] ?? '') : '',
-          };
-          const isSpanned = spanDevice && index >= spanDevice.startIndex && index <= spanDevice.endIndex;
-          const needsOwnScreenshot = !isSpanned || index === spanDevice.sourceIndex;
-          if (needsOwnScreenshot && !assets.screenImageUrl.startsWith('data:image/')) {
-            return send(response, 400, `Slide ${index + 1} is missing a screenshot`);
-          }
-          if (item.config?.background === 'image' && !assets.backgroundImageUrl.startsWith('data:image/')) {
-            return send(response, 400, `Slide ${index + 1} is missing the shared background image`);
-          }
-          if (item.config?.fontFamily === 'custom' && !assets.fontDataUrl.startsWith('data:')) {
-            return send(response, 400, `Slide ${index + 1} is missing the shared font`);
-          }
-          if (!isSpanned) buffers[index] = await renderBuffer(baseUrl, item.config ?? {}, assets);
+        const buffers = await renderBatchPayload(baseUrl, batch);
+        if (outputIndex !== undefined) return send(response, 200, buffers[outputIndex], 'image/png');
+        return send(response, 200, await createBatchArchive(batch, buffers), 'application/zip');
+      }
+
+      if (request.method === 'POST' && url.pathname === '/api/render-batch-job') {
+        const payload = await readRequestJson(request);
+        let batch;
+        try {
+          batch = normalizeBatchPayload(payload);
+        } catch (error) {
+          if (error instanceof BatchValidationError) return send(response, 400, error.message);
+          throw error;
         }
-        if (spanDevice) {
-          const spanItems = payload.items.slice(spanDevice.startIndex, spanDevice.endIndex + 1);
-          const spanBuffers = await renderSpanBuffers(
-            baseUrl,
-            spanItems,
-            assetData,
-            {
-              ...spanDevice,
-              startIndex: 0,
-              endIndex: spanItems.length - 1,
-              sourceIndex: spanDevice.sourceIndex - spanDevice.startIndex,
-            },
+        const address = server.address();
+        const job = {
+          id: randomUUID(),
+          state: 'queued',
+          completed: 0,
+          total: batch.items.length,
+          createdAt: Date.now(),
+          cancelRequested: false,
+        };
+        exportJobs.set(job.id, job);
+        void runExportJob(job, batch, `http://127.0.0.1:${address.port}`);
+        return send(
+          response,
+          202,
+          JSON.stringify({
+            jobId: job.id,
+            total: job.total,
+            statusUrl: `/api/export-job/${encodeURIComponent(job.id)}`,
+            downloadUrl: `/api/export-job/${encodeURIComponent(job.id)}/download`,
+          }),
+          'application/json',
+        );
+      }
+
+      if (url.pathname.startsWith('/api/export-job/')) {
+        const path = url.pathname.slice('/api/export-job/'.length);
+        const isDownload = path.endsWith('/download');
+        const id = decodeURIComponent(isDownload ? path.slice(0, -'/download'.length) : path);
+        const job = exportJobs.get(id);
+        if (!job) return send(response, 404, JSON.stringify({ error: 'Export job expired' }), 'application/json');
+        if (request.method === 'DELETE' && !isDownload) {
+          if (job.state === 'queued' || job.state === 'running') {
+            job.cancelRequested = true;
+            job.state = 'cancelling';
+          }
+          return send(response, 202, JSON.stringify({ state: job.state }), 'application/json');
+        }
+        if (request.method === 'GET' && isDownload) {
+          if (job.state !== 'completed' || !job.archive) {
+            return send(response, 409, JSON.stringify({ error: 'Export is not complete' }), 'application/json');
+          }
+          return send(response, 200, job.archive, 'application/zip');
+        }
+        if (request.method === 'GET') {
+          return send(
+            response,
+            200,
+            JSON.stringify({
+              id: job.id,
+              state: job.state,
+              completed: job.completed,
+              total: job.total,
+              error: job.error ?? null,
+              downloadUrl: job.state === 'completed'
+                ? `/api/export-job/${encodeURIComponent(job.id)}/download`
+                : null,
+            }),
+            'application/json',
           );
-          spanBuffers.forEach((buffer, index) => {
-            buffers[spanDevice.startIndex + index] = buffer;
-          });
         }
-        if (payload.outputIndex !== undefined) {
-          const outputIndex = Number(payload.outputIndex);
-          if (!Number.isInteger(outputIndex) || outputIndex < 0 || outputIndex >= buffers.length) {
-            return send(response, 400, 'The requested output panel is invalid');
-          }
-          return send(response, 200, buffers[outputIndex], 'image/png');
-        }
-        const entries = payload.items.map((item, index) => {
-          const filename = String(item.filename ?? `slide-${index + 1}.png`)
-            .split(/[\\/]/)
-            .pop()
-            .replace(/[^a-zA-Z0-9._-]+/g, '-');
-          return { name: filename || `slide-${index + 1}.png`, data: buffers[index] };
-        });
-        return send(response, 200, createZip(entries), 'application/zip');
       }
 
       const requestedFile = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);

@@ -10,6 +10,7 @@
   const sourceButton = document.getElementById('sourceButton');
   const sourceInput = document.getElementById('sourceInput');
   const sourceName = document.getElementById('sourceName');
+  const sourceDropzone = document.getElementById('sourceDropzone');
   const backgroundImageButton = document.getElementById('backgroundImageButton');
   const backgroundImageInput = document.getElementById('backgroundImageInput');
   const backgroundImageName = document.getElementById('backgroundImageName');
@@ -34,6 +35,15 @@
   const slideCount = document.getElementById('slideCount');
   const statusToast = document.getElementById('statusToast');
   const preflightStatus = document.getElementById('preflightStatus');
+  const preflightList = document.getElementById('preflightList');
+  const safeAreaInput = document.getElementById('safeAreaInput');
+  const exportProgress = document.getElementById('exportProgress');
+  const exportProgressLabel = document.getElementById('exportProgressLabel');
+  const exportProgressCount = document.getElementById('exportProgressCount');
+  const exportProgressBar = document.getElementById('exportProgressBar');
+  const exportProgressTrack = exportProgress.querySelector('[role="progressbar"]');
+  const cancelExportButton = document.getElementById('cancelExportButton');
+  const retryExportButton = document.getElementById('retryExportButton');
   const canvasDescription = document.getElementById('canvasDescription');
   const spanDeviceInput = document.getElementById('spanDeviceInput');
   const spanDeviceControls = document.getElementById('spanDeviceControls');
@@ -90,10 +100,13 @@
   let historyEnabled = false;
   let restoringHistory = false;
   let viewMode = 'focus';
+  let safeAreaEnabled = false;
   let recoveryEnabled = readRecoveryPreference();
   let recoverySnapshotPresent = false;
   let recoveryTimer;
   let recoveryQueue = Promise.resolve();
+  let activeExportJobId = '';
+  let exportPollTimer;
 
   const controls = {
     canvasPreset: document.getElementById('canvasPresetSelect'),
@@ -329,6 +342,72 @@
     });
   }
 
+  function isSupportedScreenshot(file) {
+    return file?.type?.startsWith('image/')
+      || /\.(png|jpe?g|webp|svg)$/i.test(file?.name ?? '');
+  }
+
+  function screenshotSlideName(file, existingNames) {
+    const base = String(file.name ?? 'Screenshot')
+      .replace(/\.[^.]+$/, '')
+      .trim()
+      || 'Screenshot';
+    let name = base;
+    let suffix = 2;
+    while (existingNames.has(name)) name = `${base} ${suffix++}`;
+    existingNames.add(name);
+    return name;
+  }
+
+  async function importScreenshotFiles(fileList) {
+    const files = [...fileList].filter(isSupportedScreenshot);
+    if (files.length === 0) {
+      showStatus('Choose PNG, JPEG, WebP, or SVG screenshots');
+      return;
+    }
+    syncProjectFromConfig();
+    const availableSlots = Math.max(1, 10 - project.slides.length + 1);
+    const importedFiles = files.slice(0, availableSlots);
+    const skippedCount = files.length - importedFiles.length;
+    const selected = currentSlide();
+    const selectedIndex = project.slides.indexOf(selected);
+    const existingNames = new Set(project.slides.map((slide) => slide.name));
+    const importedSlides = [];
+
+    try {
+      for (const [fileIndex, file] of importedFiles.entries()) {
+        const assetId = MockupProject.createAsset(project, {
+          name: file.name,
+          type: 'image',
+          dataUrl: await fileToDataUrl(file),
+        });
+        if (fileIndex === 0) {
+          selected.screenshotAssetId = assetId;
+          if (/^Slide \d+$/.test(selected.name) || selected.name === 'Untitled screenshot') {
+            selected.name = screenshotSlideName(file, existingNames);
+          }
+          continue;
+        }
+        importedSlides.push({
+          id: MockupProject.createId('slide'),
+          name: screenshotSlideName(file, existingNames),
+          config: { ...selected.config },
+          screenshotAssetId: assetId,
+        });
+      }
+      if (importedSlides.length > 0) {
+        project.slides.splice(selectedIndex + 1, 0, ...importedSlides);
+      }
+      updateControlValues();
+      updatePreview();
+      const importedCount = importedFiles.length;
+      const suffix = skippedCount > 0 ? `; ${skippedCount} skipped because the set holds 10 slides` : '';
+      showStatus(`${importedCount} screenshot${importedCount === 1 ? '' : 's'} imported${suffix}`);
+    } catch (error) {
+      showStatus(`Screenshot import failed: ${error.message}`);
+    }
+  }
+
   function downloadBlob(blob, filename) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -396,6 +475,10 @@
     sceneFrame.removeAttribute('id');
     sceneFrame.querySelectorAll('[id]').forEach((element) => element.removeAttribute('id'));
     return sceneFrame;
+  }
+
+  function applySafeAreaGuide(sceneFrame) {
+    sceneFrame.classList.toggle('is-safe-area-visible', safeAreaEnabled);
   }
 
   function projectForStorage() {
@@ -941,8 +1024,9 @@
       panel.className = 'overview-panel';
       panel.style.left = `${index * width}px`;
       panel.style.width = `${width}px`;
-      const panelFrame = cloneSceneFrame();
-      const isSpanned = span && index >= span.startIndex && index <= span.endIndex;
+        const panelFrame = cloneSceneFrame();
+        applySafeAreaGuide(panelFrame);
+        const isSpanned = span && index >= span.startIndex && index <= span.endIndex;
       MockupScene.applyScene(
         panelFrame,
         { ...MockupProject.composeConfig(project, slide), ...(isSpanned ? { showDevice: false } : {}) },
@@ -1021,11 +1105,43 @@
     else fitPreview();
   }
 
+  function copyBoundsWarning() {
+    const copy = frame.querySelector('.copy-block');
+    if (!copy || !copy.textContent.trim()) return '';
+    const frameRect = frame.getBoundingClientRect();
+    const copyRect = copy.getBoundingClientRect();
+    const tolerance = Math.max(2, frameRect.width / Math.max(1, config.width) * 4);
+    if (copyRect.right > frameRect.right + tolerance || copyRect.bottom > frameRect.bottom + tolerance) {
+      return 'copy extends beyond the canvas; reduce its size or move it upward';
+    }
+    return '';
+  }
+
   function updatePreflight() {
     const target = MockupScene.CANVAS_PRESETS[config.canvasPreset];
     const warnings = [];
+    const checks = [];
+    const addCheck = (state, message) => checks.push({ state, message });
+    if (target) {
+      const dimensionsMatch = Number(config.width) === target.width && Number(config.height) === target.height
+        || target.allowOrientation
+          && Number(config.width) === target.height
+          && Number(config.height) === target.width;
+      if (dimensionsMatch) {
+        addCheck('ready', `${target.label} dimensions match`);
+      } else {
+        warnings.push('canvas dimensions do not match the selected store target');
+        addCheck('warning', 'Canvas dimensions do not match the selected store target');
+      }
+    } else {
+      warnings.push('choose a store target to validate dimensions');
+      addCheck('warning', 'Choose a store target to validate dimensions');
+    }
     if (target?.platform === 'google' && config.background === 'transparent') {
       warnings.push('Google Play PNGs cannot contain transparency');
+      addCheck('warning', 'Google Play PNGs cannot contain transparency');
+    } else if (config.background !== 'transparent') {
+      addCheck('ready', 'Output has an opaque background');
     }
     const span = repairSpanDevice();
     const selectedIndex = project.slides.indexOf(currentSlide());
@@ -1033,15 +1149,27 @@
     if (selectedUsesSpan) {
       if (!assetById(project.slides[span.sourceIndex].screenshotAssetId)?.dataUrl) {
         warnings.push('reselect the spanning device source screenshot');
+        addCheck('warning', 'Reselect the spanning device source screenshot');
+      } else {
+        addCheck('ready', 'Spanning source screenshot is available');
       }
     } else if (!assets.screenImageUrl) {
       warnings.push('reselect this slide’s screenshot');
+      addCheck('warning', 'Reselect this slide’s screenshot');
+    } else {
+      addCheck('ready', 'Selected screenshot is available');
     }
     if (config.background === 'image' && !assets.backgroundImageUrl) {
       warnings.push('reselect the shared background image');
+      addCheck('warning', 'Reselect the shared background image');
+    } else if (config.background === 'image') {
+      addCheck('ready', 'Shared background image is available');
     }
     if (config.fontFamily === 'custom' && !assets.fontDataUrl) {
       warnings.push('reselect the shared font file');
+      addCheck('warning', 'Reselect the shared font file');
+    } else if (config.fontFamily === 'custom') {
+      addCheck('ready', 'Shared local font is available');
     }
     const missingScreens = project.slides.filter((slide, index) => {
       if (span && index >= span.startIndex && index <= span.endIndex) return false;
@@ -1049,6 +1177,16 @@
     }).length;
     if (missingScreens > 0 && (selectedUsesSpan || assets.screenImageUrl)) {
       warnings.push(`${missingScreens} other slide${missingScreens === 1 ? '' : 's'} need screenshots`);
+      addCheck('warning', `${missingScreens} other slide${missingScreens === 1 ? '' : 's'} need screenshots`);
+    } else if (project.slides.length > 1) {
+      addCheck('ready', `All ${project.slides.length} slide screenshots are available`);
+    }
+    const copyWarning = copyBoundsWarning();
+    if (copyWarning) {
+      warnings.push(copyWarning);
+      addCheck('warning', 'Copy extends beyond the canvas');
+    } else if (config.headline || config.subhead || config.kicker) {
+      addCheck('ready', 'Copy fits within the canvas');
     }
     const label = target?.label ?? 'Custom canvas';
     previewMeta.textContent = `${config.width} × ${config.height} · ${label}`;
@@ -1056,6 +1194,18 @@
       ? `${label} · ${warnings.join('; ')}.`
       : `${label} · ${project.slides.length}-slide set ready to export.`;
     preflightStatus.classList.toggle('is-warning', warnings.length > 0);
+    preflightList.replaceChildren();
+    for (const check of checks) {
+      const item = document.createElement('li');
+      item.className = `preflight-check is-${check.state}`;
+      const state = document.createElement('span');
+      state.className = 'preflight-check-state';
+      state.textContent = check.state === 'warning' ? 'Check' : 'Ready';
+      const message = document.createElement('span');
+      message.textContent = check.message;
+      item.append(state, message);
+      preflightList.append(item);
+    }
   }
 
   function updatePreview({ record = true } = {}) {
@@ -1063,6 +1213,7 @@
     refreshAssets();
     const focusState = focusSceneState();
     MockupScene.applyScene(frame, focusState.sceneConfig, focusState.sceneAssets);
+    applySafeAreaGuide(frame);
     fitPreview();
     renderSetOverview();
     updateValueLabels();
@@ -1282,6 +1433,88 @@
     }
   }
 
+  function setExportProgress({ state, label, completed, total }) {
+    const safeTotal = Number(total) || 0;
+    const safeCompleted = Math.max(0, Math.min(safeTotal, Number(completed) || 0));
+    const percent = safeTotal > 0 ? Math.round((safeCompleted / safeTotal) * 100) : 0;
+    exportProgress.hidden = false;
+    exportProgress.dataset.state = state;
+    exportProgressLabel.textContent = label;
+    exportProgressCount.textContent = `${safeCompleted} / ${safeTotal}`;
+    exportProgressBar.style.transform = `scaleX(${percent / 100})`;
+    exportProgressTrack.setAttribute('aria-valuenow', String(percent));
+    const isActive = ['queued', 'running', 'cancelling'].includes(state);
+    cancelExportButton.hidden = !isActive;
+    cancelExportButton.disabled = state === 'cancelling';
+    retryExportButton.hidden = !['cancelled', 'failed'].includes(state);
+    exportButton.disabled = isActive;
+    exportSetButton.disabled = isActive;
+    exportSetButton.textContent = isActive ? 'Exporting…' : 'Export set';
+  }
+
+  function waitForExportPoll() {
+    return new Promise((resolve) => {
+      exportPollTimer = window.setTimeout(resolve, 240);
+    });
+  }
+
+  async function pollExportJob(jobId, total) {
+    while (activeExportJobId === jobId) {
+      const response = await apiFetch(`/api/export-job/${encodeURIComponent(jobId)}`);
+      if (!response.ok) throw new Error(await response.text());
+      const job = await response.json();
+      if (activeExportJobId !== jobId) return;
+      if (job.state === 'queued' || job.state === 'running' || job.state === 'cancelling') {
+        setExportProgress({
+          state: job.state,
+          label: job.state === 'cancelling' ? 'Cancelling export…' : 'Rendering screenshot set…',
+          completed: job.completed,
+          total: job.total ?? total,
+        });
+        await waitForExportPoll();
+        continue;
+      }
+      if (job.state === 'cancelled') {
+        setExportProgress({ state: 'cancelled', label: 'Export cancelled', completed: job.completed, total: job.total ?? total });
+        showStatus('Set export cancelled');
+        activeExportJobId = '';
+        return;
+      }
+      if (job.state === 'failed') {
+        setExportProgress({ state: 'failed', label: `Export failed: ${job.error ?? 'unknown render error'}`, completed: job.completed, total: job.total ?? total });
+        showStatus(`Set export failed: ${job.error ?? 'unknown render error'}`);
+        activeExportJobId = '';
+        return;
+      }
+      if (job.state === 'completed') {
+        setExportProgress({ state: 'completed', label: 'Export complete', completed: job.total, total: job.total });
+        const archiveResponse = await apiFetch(job.downloadUrl);
+        if (!archiveResponse.ok) throw new Error(await archiveResponse.text());
+        downloadBlob(
+          await archiveResponse.blob(),
+          `${MockupProject.safeFilename(project.name)}-${config.canvasPreset}.zip`,
+        );
+        showStatus(`${job.total}-slide set rendered locally`);
+        activeExportJobId = '';
+        return;
+      }
+      throw new Error(`Unknown export state: ${job.state}`);
+    }
+  }
+
+  async function cancelExport() {
+    if (!activeExportJobId) return;
+    const jobId = activeExportJobId;
+    cancelExportButton.disabled = true;
+    try {
+      await apiFetch(`/api/export-job/${encodeURIComponent(jobId)}`, { method: 'DELETE' });
+      setExportProgress({ state: 'cancelling', label: 'Cancelling export…', completed: 0, total: project.slides.length });
+    } catch (error) {
+      cancelExportButton.disabled = false;
+      showStatus(`Could not cancel export: ${error.message}`);
+    }
+  }
+
   async function exportCurrentSlide() {
     syncProjectFromConfig();
     exportButton.disabled = true;
@@ -1329,6 +1562,7 @@
   }
 
   async function exportProjectSet() {
+    if (activeExportJobId) return;
     syncProjectFromConfig();
     try {
       validateExportAssets();
@@ -1337,26 +1571,38 @@
       return;
     }
 
-    exportSetButton.disabled = true;
-    exportSetButton.textContent = `Rendering ${project.slides.length}…`;
+    setExportProgress({
+      state: 'queued',
+      label: 'Preparing export…',
+      completed: 0,
+      total: project.slides.length,
+    });
     try {
-      const response = await apiFetch('/api/render-batch', {
+      const response = await apiFetch('/api/render-batch-job', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(createBatchPayload()),
       });
       if (!response.ok) throw new Error(await response.text());
-      downloadBlob(
-        await response.blob(),
-        `${MockupProject.safeFilename(project.name)}-${config.canvasPreset}.zip`,
-      );
-      showStatus(`${project.slides.length}-slide set rendered locally`);
+      const job = await response.json();
+      activeExportJobId = job.jobId;
+      setExportProgress({
+        state: 'queued',
+        label: 'Queued for local rendering…',
+        completed: 0,
+        total: job.total ?? project.slides.length,
+      });
+      await pollExportJob(job.jobId, job.total ?? project.slides.length);
     } catch (error) {
       console.error(error);
+      activeExportJobId = '';
+      setExportProgress({
+        state: 'failed',
+        label: `Export failed: ${error.message}`,
+        completed: 0,
+        total: project.slides.length,
+      });
       showStatus(`Set export failed: ${error.message}`);
-    } finally {
-      exportSetButton.disabled = false;
-      exportSetButton.textContent = 'Export set';
     }
   }
 
@@ -1599,23 +1845,35 @@
   });
 
   sourceButton.addEventListener('click', () => sourceInput.click());
-  sourceInput.addEventListener('change', async () => {
-    const [file] = sourceInput.files;
-    if (!file) return;
-    try {
-      currentSlide().screenshotAssetId = MockupProject.createAsset(project, {
-        name: file.name,
-        type: 'image',
-        dataUrl: await fileToDataUrl(file),
-      });
-      updateControlValues();
-      updatePreview();
-      showStatus(`Screenshot selected for ${currentSlide().name}`);
-    } catch (error) {
-      showStatus(`Screenshot failed: ${error.message}`);
-    } finally {
-      sourceInput.value = '';
-    }
+  sourceDropzone.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    sourceInput.click();
+  });
+  sourceDropzone.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    sourceDropzone.classList.add('is-dragging');
+  });
+  sourceDropzone.addEventListener('dragleave', () => sourceDropzone.classList.remove('is-dragging'));
+  sourceDropzone.addEventListener('drop', (event) => {
+    event.preventDefault();
+    sourceDropzone.classList.remove('is-dragging');
+    void importScreenshotFiles(event.dataTransfer.files);
+  });
+  sourceInput.addEventListener('change', () => {
+    void importScreenshotFiles(sourceInput.files);
+    sourceInput.value = '';
+  });
+
+  document.addEventListener('paste', (event) => {
+    const target = event.target;
+    const isEditing = target instanceof HTMLInputElement
+      || target instanceof HTMLTextAreaElement
+      || target instanceof HTMLSelectElement
+      || target?.isContentEditable;
+    if (isEditing || !event.clipboardData?.files?.length) return;
+    event.preventDefault();
+    void importScreenshotFiles(event.clipboardData.files);
   });
 
   backgroundImageButton.addEventListener('click', () => backgroundImageInput.click());
@@ -1697,6 +1955,12 @@
     await applyProjectFont();
     updateControlValues();
     updatePreview();
+  });
+
+  safeAreaInput.addEventListener('change', () => {
+    safeAreaEnabled = safeAreaInput.checked;
+    applySafeAreaGuide(frame);
+    if (viewMode === 'set') renderSetOverview();
   });
 
   recoveryInput.addEventListener('change', async () => {
@@ -1817,6 +2081,8 @@
       projectInput.value = '';
     }
   });
+  cancelExportButton.addEventListener('click', cancelExport);
+  retryExportButton.addEventListener('click', exportProjectSet);
   exportButton.addEventListener('click', exportCurrentSlide);
   exportSetButton.addEventListener('click', exportProjectSet);
 

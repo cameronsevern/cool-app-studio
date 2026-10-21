@@ -78,13 +78,15 @@ first export:
 
 ## Interactive workflow
 
-1. Choose a PNG, JPEG, WebP, or SVG screenshot.
+1. Choose or drop one or more PNG, JPEG, WebP, or SVG screenshots. Multiple files create an ordered set in one action; pasted image files are also accepted.
 2. Select an App Store, Google Play, or custom canvas.
 3. Set the shared device, background, font, colors, and type styling.
 4. Adjust the current slide's copy, screenshot, device position, and copy position.
 5. Add, duplicate, rename, and reorder slides in the screenshot-set strip.
 6. Choose **Export PNG** for the current slide or **Export set** for an ordered
-   ZIP containing every full-resolution PNG.
+   ZIP containing every full-resolution PNG. Set export reports local progress,
+   can be cancelled and retried, and includes a deterministic manifest with
+   dimensions, renderer metadata, and content hashes.
 
 Shared controls are labeled in the editor and update the full set. Slide-level
 controls let each composition carry its own story and framing without drifting
@@ -92,7 +94,10 @@ away from the set's brand treatment. A set can contain up to ten slides.
 
 Use **All panels** to fit the complete set into one continuous editor view. The
 panel lines are the exact crop boundaries used during export, and clicking a
-panel selects it for focused editing.
+panel selects it for focused editing. **Export readiness** reports missing
+assets, target-dimension problems, transparency conflicts, and copy that runs
+outside the canvas. Its suggested safe-area guide is editor-only and never
+appears in exported PNGs.
 
 ## Continuous elements across panels
 

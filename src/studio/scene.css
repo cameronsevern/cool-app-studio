@@ -194,6 +194,36 @@ body {
   );
 }
 
+.safe-area-overlay {
+  position: absolute;
+  z-index: 8;
+  inset: 5% 6%;
+  display: none;
+  border: 2px dashed rgba(var(--accent-rgb), 0.72);
+  border-radius: 18px;
+  box-shadow: 0 0 0 9999px rgba(2, 7, 10, 0.08);
+  pointer-events: none;
+}
+
+.safe-area-overlay::before {
+  position: absolute;
+  top: -29px;
+  left: 0;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: rgba(3, 9, 12, 0.82);
+  color: rgba(218, 248, 250, 0.88);
+  content: "Suggested safe area";
+  font-family: Inter, ui-sans-serif, sans-serif;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.export-frame.is-safe-area-visible .safe-area-overlay {
+  display: block;
+}
+
 .export-frame[data-background="transparent"] .scene-glow,
 .export-frame[data-background="transparent"] .scene-ring,
 .export-frame[data-background="transparent"] .scene-spectrum,

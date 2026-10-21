@@ -91,11 +91,12 @@
         <details class="control-section" open>
           <summary><span>Screenshot</span><span class="scope-pill">This slide</span></summary>
           <div class="control-content">
-            <div class="source-row">
-              <button class="source-button" id="sourceButton" type="button">Choose screenshot</button>
+            <div class="source-row screenshot-dropzone" id="sourceDropzone" tabindex="0" role="group" aria-label="Choose one or more screenshots">
+              <button class="source-button" id="sourceButton" type="button">Choose screenshots</button>
               <span class="source-name" id="sourceName">Demo screenshot</span>
             </div>
-            <input id="sourceInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden>
+            <input id="sourceInput" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple hidden>
+            <p class="field-help">Drop or choose multiple images to create an ordered set. One image replaces the selected slide.</p>
           </div>
         </details>
 
@@ -380,6 +381,25 @@
           <summary>Export readiness</summary>
           <div class="control-content">
             <div class="preflight-status" id="preflightStatus" role="status">Custom canvas · ready to export.</div>
+            <ul class="preflight-list" id="preflightList" aria-label="Export checks"></ul>
+            <label class="toggle-row guide-toggle" for="safeAreaInput">
+              <input id="safeAreaInput" type="checkbox">
+              <span>Show suggested safe-area guide</span>
+            </label>
+            <p class="field-help">Guides are visual helpers, not a replacement for the current store requirements.</p>
+            <div class="export-progress" id="exportProgress" hidden aria-live="polite">
+              <div class="export-progress-heading">
+                <span id="exportProgressLabel">Preparing export…</span>
+                <span id="exportProgressCount">0 / 0</span>
+              </div>
+              <div class="export-progress-track" role="progressbar" aria-label="Export progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <span id="exportProgressBar"></span>
+              </div>
+              <div class="export-progress-actions">
+                <button class="text-button" id="cancelExportButton" type="button">Cancel export</button>
+                <button class="text-button" id="retryExportButton" type="button" hidden>Retry export</button>
+              </div>
+            </div>
             <p class="field-help">Rendering happens through the local-only server. Selected screenshots, backgrounds, and fonts are not uploaded.</p>
           </div>
         </details>
@@ -400,9 +420,10 @@
               <img class="scene-background-image" alt="" hidden>
               <div class="scene-background-overlay"></div>
               <div class="scene-glow"></div>
-              <div class="scene-ring"></div>
-              <div class="scene-spectrum"></div>
-              <section class="copy-block">
+                <div class="scene-ring"></div>
+                <div class="scene-spectrum"></div>
+                <div class="safe-area-overlay" aria-hidden="true"></div>
+                <section class="copy-block">
                 <p class="copy-kicker"></p>
                 <h2 class="copy-headline"></h2>
                 <p class="copy-subhead"></p>
